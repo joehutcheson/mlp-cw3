@@ -3,7 +3,7 @@ ALL THIS CODE HAS BEEN COPIED FROM
 https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 """
 
-from pettingzoo.classic import chess_v5 as chess # this is our code
+# from pettingzoo.classic import chess_v5 as chess # this is our code
 
 
 import math
@@ -18,7 +18,10 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-env = chess.env()  # this is also our code
+# env = chess.env()  # this is also our code
+
+import gymnasium as gym
+env = gym.make("CartPole-v1")
 
 # set up matplotlib
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -196,7 +199,7 @@ def optimize_model():
 if torch.cuda.is_available():
     num_episodes = 600
 else:
-    num_episodes = 50
+    num_episodes = 500
 
 for i_episode in range(num_episodes):
     # Initialize the environment and get it's state
