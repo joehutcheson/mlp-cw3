@@ -1,4 +1,5 @@
-from collections import namedtuple
+import random
+from collections import namedtuple, deque
 
 import torch
 import torch.nn as nn
@@ -15,21 +16,30 @@ class DQN:
         pass
 
 
-
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
+
 class ReplayMemory():
     """
-    We’ll be using experience replay memory for training our DQN.
-    It stores the transitions that the agent observes, allowing us to reuse this
-    data later. By sampling from it randomly, the transitions that build up a
-    batch are decorrelated. It has been shown that this greatly stabilizes and
-    improves the DQN training procedure.
+    Replay memory is a data structure that stores a history of past experiences
+    or interactions in the environment. These experiences are represented as
+    tuples of (state, action, reward, next state) and are randomly sampled from
+    the replay memory during the learning process.
     """
 
-    def __init__(self):
-        """
-        Constructor
-        """
-        pass
+    def __init__(self, capacity):
+        """ Constructor """
+        self.memory = deque([], maxlen=capacity)
+
+    def push(self, *args):
+        """Save a transition"""
+        self.memory.append(Transition(*args))
+
+    def sample(self, batch_size):
+        """ Sample an experience from the replay memory of size batch_size"""
+        return random.sample(self.memory, batch_size)
+
+    def __len__(self):
+        """ Pretty straight forward - returns the size of the replay memory"""
+        return len(self.memory)
