@@ -80,14 +80,19 @@ class Model:
         eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
                         math.exp(-1. * self.steps_done / self.EPS_DECAY)
         self.steps_done += 1
+        mask = self.env.observe(agent)['action_mask']
         if sample > eps_threshold:
             with torch.no_grad():
                 # t.max(1) will return the largest column value of each row.
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
-                return self.policy_net(state).max(1)[1].view(1, 1)
+                policy = self.policy_net(state) * mask
+                if torch.max(policy) <= 0:
+                    return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
+                                        dtype=torch.long)
+                return (policy).max(1)[1].view(1, 1)
         else:
-            return torch.tensor([[self.env.action_space(agent).sample()]], device=self.device,
+            return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
                                 dtype=torch.long)
 
     # def plot_durations(self, show_result=False):
@@ -167,45 +172,52 @@ class Model:
     def train(self, num_episodes=500):
 
         for i_episode in range(num_episodes):
+            print(i_episode)
             # Initialize the environment and get it's state
             self.env.reset()
-            for agent in self.env.agents:
-                state = self.env.observe(agent)['observation']
-                state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
-                for t in count():
-                    action = self.select_action(state, agent)  # TODO: Action mask etc.
-                    observation, reward, terminated, truncated, _ = self.env.step(action.item())
-                    reward = torch.tensor([reward], device=self.device)
-                    done = terminated or truncated
+            agent = self.env.agent_selection
+            state = self.env.observe(agent)['observation'].flatten()
+            state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+            for t in count():
+                action = self.select_action(state, agent)
+                self.env.step(action.item())
+                observation = self.env.observe(agent)['observation'].flatten()
+                reward = self.env.rewards[agent]
+                terminated = self.env.terminations[agent]
+                truncated = self.env.truncations[agent]
+                reward = torch.tensor([reward], device=self.device)
+                done = terminated or truncated
 
-                    if terminated:
-                        next_state = None
-                    else:
-                        next_state = torch.tensor(observation, dtype=torch.float32,
-                                                  device=self.device).unsqueeze(0)
+                if terminated:
+                    next_state = None
+                else:
+                    next_state = torch.tensor(observation, dtype=torch.float32,
+                                              device=self.device).unsqueeze(0)
 
-                    # Store the transition in memory
-                    self.memory[agent].push(state, action, next_state, reward)
+                # Store the transition in memory
+                self.memory[agent].push(state, action, next_state, reward)
 
-                    # Move to the next state
-                    state = next_state
+                # Move to the next state
+                state = next_state
 
-                    # Perform one step of the optimization (on the policy network)
-                    self.optimize_model(agent)
+                # Perform one step of the optimization (on the policy network)
+                self.optimize_model(agent)
 
-                    # Soft update of the target network's weights
-                    # θ′ ← τ θ + (1 −τ )θ′
-                    target_net_state_dict = self.target_net.state_dict()
-                    policy_net_state_dict = self.policy_net.state_dict()
-                    for key in policy_net_state_dict:
-                        target_net_state_dict[key] = policy_net_state_dict[key] * self.TAU + \
-                                                     target_net_state_dict[key] * (1 - self.TAU)
-                    self.target_net.load_state_dict(target_net_state_dict)
+                # Soft update of the target network's weights
+                # θ′ ← τ θ + (1 −τ )θ′
+                target_net_state_dict = self.target_net.state_dict()
+                policy_net_state_dict = self.policy_net.state_dict()
+                for key in policy_net_state_dict:
+                    target_net_state_dict[key] = policy_net_state_dict[key] * self.TAU + \
+                                                 target_net_state_dict[key] * (1 - self.TAU)
+                self.target_net.load_state_dict(target_net_state_dict)
 
-                    if done:
-                        self.episode_durations.append(t + 1)
-                        # self.plot_durations()
-                        break
+                agent = self.env.agent_selection
+
+                if done:
+                    self.episode_durations.append(t + 1)
+                    # self.plot_durations()
+                    break
 
         print('Complete')
         # self.plot_durations(show_result=True)
