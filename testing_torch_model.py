@@ -17,13 +17,16 @@ import torch.nn.functional as F
 
 from pettingzoo.utils.wrappers.order_enforcing import OrderEnforcingWrapper
 
+from stockfish import Stockfish
+
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
     from IPython import display
 
 
 class Model:
-    def __init__(self, env: OrderEnforcingWrapper, reward_function=None):
+    def __init__(self, env: OrderEnforcingWrapper,
+                 reward_function, stockfish_path=None, reward_function_2=None, stockfish_difficulty=20):
         # set up matplotlib
         plt.ion()
 
@@ -37,8 +40,24 @@ class Model:
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        # PettingZoo setup
         self.env = env
         self.env.reset()
+
+        self.reward_function = reward_function
+
+        # Stockfish and model setup
+        self.stockfish = None
+        self.dual_model = False
+        if stockfish_path is not None:
+            self.stockfish = Stockfish(stockfish_path)
+            self.stockfish.set_skill_level(stockfish_difficulty)
+        elif reward_function_2 is not None:
+            raise NotImplementedError
+            self.reward_function_2 = reward_function_2
+            self.dual_model = True
+        else:
+            raise Exception("Must define opponent model to be either Stockfish or a reward function.")
 
         # BATCH_SIZE is the number of transitions sampled from the replay buffer
         # GAMMA is the discount factor as mentioned in the previous section
@@ -66,8 +85,8 @@ class Model:
 
         self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.LR, amsgrad=True)
 
-        self.memory = dict()
 
+        self.memory = dict()
         for agent in self.env.agents:
             self.memory[agent] = ReplayMemory(10000)
 
@@ -76,24 +95,29 @@ class Model:
         self.episode_durations = []
 
     def select_action(self, state, agent):
-        sample = random.random()
-        eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
-                        math.exp(-1. * self.steps_done / self.EPS_DECAY)
-        self.steps_done += 1
-        mask = self.env.observe(agent)['action_mask']
-        if sample > eps_threshold:
-            with torch.no_grad():
-                # t.max(1) will return the largest column value of each row.
-                # second column on max result is index of where max element was
-                # found, so we pick action with the larger expected reward.
-                policy = self.policy_net(state) * mask
-                if torch.max(policy) <= 0:
-                    return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
-                                        dtype=torch.long)
-                return (policy).max(1)[1].view(1, 1)
+        assert self.stockfish or self.dual_model
+        if self.stockfish and agent==self.env.agents[1]:
+            best_action = self.stockfish.get_best_move()
+
         else:
-            return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
-                                dtype=torch.long)
+            sample = random.random()
+            eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
+                            math.exp(-1. * self.steps_done / self.EPS_DECAY)
+            self.steps_done += 1
+            mask = self.env.observe(agent)['action_mask']
+            if sample > eps_threshold:
+                with torch.no_grad():
+                    # t.max(1) will return the largest column value of each row.
+                    # second column on max result is index of where max element was
+                    # found, so we pick action with the larger expected reward.
+                    policy = self.policy_net(state) * mask
+                    if torch.max(policy) <= 0:
+                        return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
+                                            dtype=torch.long)
+                    return (policy).max(1)[1].view(1, 1)
+            else:
+                return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
+                                    dtype=torch.long)
 
     # def plot_durations(self, show_result=False):
     #     plt.figure(1)
@@ -228,16 +252,20 @@ class Model:
 class DQN(nn.Module):
     def __init__(self, n_observations, n_actions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(n_observations, 128)
-        self.layer2 = nn.Linear(128, 128)
-        self.layer3 = nn.Linear(128, n_actions)
+        self.layer1 = nn.Linear(n_observations, 256)
+        self.layer2 = nn.Linear(256, 256)
+        self.layer3 = nn.Linear(256, 256)
+        self.layer4 = nn.Linear(256, 256)
+        self.layer5 = nn.Linear(256, n_actions)
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
-        return self.layer3(x)
+        x = F.relu(self.layer3(x))
+        x = F.relu(self.layer4(x))
+        return self.layer5(x)
 
 
 Transition = namedtuple('Transition',
