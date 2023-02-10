@@ -26,7 +26,8 @@ if is_ipython:
 
 class Model:
     def __init__(self, env: OrderEnforcingWrapper,
-                 reward_function, stockfish_path=None, reward_function_2=None, stockfish_difficulty=20):
+                 reward_function, stockfish_path=None, reward_function_2=None, stockfish_difficulty=20,
+                 use_same_model=False):
         # set up matplotlib
         plt.ion()
 
@@ -53,7 +54,6 @@ class Model:
             self.stockfish = Stockfish(stockfish_path)
             self.stockfish.set_skill_level(stockfish_difficulty)
         elif reward_function_2 is not None:
-            raise NotImplementedError
             self.reward_function_2 = reward_function_2
             self.dual_model = True
         else:
@@ -79,16 +79,21 @@ class Model:
         # Get the number of state observations
         n_observations = math.prod(env.observe('player_0')['observation'].shape)
 
-        self.policy_net = DQN(n_observations, n_actions).to(device)
-        self.target_net = DQN(n_observations, n_actions).to(device)
-        self.target_net.load_state_dict(self.policy_net.state_dict())
-
-        self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.LR, amsgrad=True)
-
-
         self.memory = dict()
+        self.policy_net = dict()
+        self.target_net = dict()
+        self.optimizer = dict()
         for agent in self.env.agents:
+            self.policy_net[agent] = DQN(n_observations, n_actions).to(device)
+            self.target_net[agent] = DQN(n_observations, n_actions).to(device)
+            self.target_net[agent].load_state_dict(self.policy_net[agent].state_dict())
+            self.optimizer[agent] = optim.AdamW(self.policy_net[agent].parameters(), lr=self.LR, amsgrad=True)
             self.memory[agent] = ReplayMemory(10000)
+
+        if use_same_model:
+            self.policy_net[self.env.agents[1]] = self.policy_net[self.env.agents[0]]
+            self.target_net[self.env.agents[1]] = self.target_net[self.env.agents[0]]
+            self.optimizer[self.env.agents[1]] = self.optimizer[self.env.agents[0]]
 
         self.steps_done = 0
 
@@ -96,9 +101,9 @@ class Model:
 
     def select_action(self, state, agent):
         assert self.stockfish or self.dual_model
-        if self.stockfish and agent==self.env.agents[1]:
+        if self.stockfish and agent == self.env.agents[1]:
             best_action = self.stockfish.get_best_move()
-
+            return self.stockfish_to_pettingzoo(best_action)
         else:
             sample = random.random()
             eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
@@ -110,7 +115,7 @@ class Model:
                     # t.max(1) will return the largest column value of each row.
                     # second column on max result is index of where max element was
                     # found, so we pick action with the larger expected reward.
-                    policy = self.policy_net(state) * mask
+                    policy = self.policy_net[agent](state) * mask
                     if torch.max(policy) <= 0:
                         return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
                                             dtype=torch.long)
@@ -167,7 +172,7 @@ class Model:
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken
         # for each batch state according to policy_net
-        state_action_values = self.policy_net(state_batch).gather(1, action_batch)
+        state_action_values = self.policy_net[agent](state_batch).gather(1, action_batch)
 
         # Compute V(s_{t+1}) for all next states.
         # Expected values of actions for non_final_next_states are computed based
@@ -177,7 +182,7 @@ class Model:
         next_state_values = torch.zeros(self.BATCH_SIZE, device=self.device)
         with torch.no_grad():
             next_state_values[non_final_mask] = \
-                self.target_net(non_final_next_states).max(1)[0]
+                self.target_net[agent](non_final_next_states).max(1)[0]
         # Compute the expected Q values
         expected_state_action_values = (next_state_values * self.GAMMA) + reward_batch
 
@@ -187,11 +192,11 @@ class Model:
                          expected_state_action_values.unsqueeze(1))
 
         # Optimize the model
-        self.optimizer.zero_grad()
+        self.optimizer[agent].zero_grad()
         loss.backward()
         # In-place gradient clipping
-        torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
-        self.optimizer.step()
+        torch.nn.utils.clip_grad_value_(self.policy_net[agent].parameters(), 100)
+        self.optimizer[agent].step()
 
     def train(self, num_episodes=500):
 
@@ -205,11 +210,23 @@ class Model:
             for t in count():
                 action = self.select_action(state, agent)
                 self.env.step(action.item())
+                move = self.pettingzoo_to_stockfish(action)
+                self.stockfish.make_moves_from_current_position([move])
+
                 observation = self.env.observe(agent)['observation'].flatten()
-                reward = self.env.rewards[agent]
+
+                if agent == agent[0]:
+                    reward = self.reward_function()
+                elif self.dual_model:
+                    reward = self.reward_function_2()
+                elif self.stockfish is not None:
+                    reward = None
+                else:
+                    raise Exception
+
                 terminated = self.env.terminations[agent]
                 truncated = self.env.truncations[agent]
-                reward = torch.tensor([reward], device=self.device)
+
                 done = terminated or truncated
 
                 if terminated:
@@ -219,7 +236,9 @@ class Model:
                                               device=self.device).unsqueeze(0)
 
                 # Store the transition in memory
-                self.memory[agent].push(state, action, next_state, reward)
+                if agent == self.env.agents[0] or self.dual_model:
+                    reward = torch.tensor([reward], device=self.device)
+                    self.memory[agent].push(state, action, next_state, reward)
 
                 # Move to the next state
                 state = next_state
@@ -229,12 +248,12 @@ class Model:
 
                 # Soft update of the target network's weights
                 # θ′ ← τ θ + (1 −τ )θ′
-                target_net_state_dict = self.target_net.state_dict()
-                policy_net_state_dict = self.policy_net.state_dict()
+                target_net_state_dict = self.target_net[agent].state_dict()
+                policy_net_state_dict = self.policy_net[agent].state_dict()
                 for key in policy_net_state_dict:
                     target_net_state_dict[key] = policy_net_state_dict[key] * self.TAU + \
                                                  target_net_state_dict[key] * (1 - self.TAU)
-                self.target_net.load_state_dict(target_net_state_dict)
+                self.target_net[agent].load_state_dict(target_net_state_dict)
 
                 agent = self.env.agent_selection
 
@@ -247,6 +266,12 @@ class Model:
         # self.plot_durations(show_result=True)
         # plt.ioff()
         # plt.show()
+
+    def stockfish_to_pettingzoo(self, move):
+        raise NotImplementedError
+
+    def pettingzoo_to_stockfish(self, action):
+        raise NotImplementedError
 
 
 class DQN(nn.Module):
