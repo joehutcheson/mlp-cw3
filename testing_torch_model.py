@@ -280,6 +280,17 @@ class Model:
         # plt.ioff()
         # plt.show()
 
+    def save_model(self, agent, path):
+        torch.save(self.target_net[agent].state_dict(), path + 'target_net.pt')
+        torch.save(self.policy_net[agent].state_dict(), path + 'policy_net.pt')
+
+    def load_model(self, agent, path):
+        self.target_net[agent].load_state_dict(torch.load(path + 'target_net.pt'))
+        self.target_net[agent].eval()
+
+        self.policy_net[agent].load_state_dict(torch.load(path + 'policy_net.pt'))
+        self.policy_net[agent].eval()
+
     def stockfish_to_pettingzoo(self, move):
         raise NotImplementedError
 
