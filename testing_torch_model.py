@@ -28,10 +28,22 @@ class Model:
     def __init__(self, env: OrderEnforcingWrapper,
                  reward_function, stockfish_path=None, reward_function_2=None, stockfish_difficulty=20,
                  use_same_model=False):
+
+        """
+
+        :param env: Petting Zoo chess environment
+        :param reward_function: Reward function for first agent
+        :param stockfish_path: Path to Stockfish binary
+        :param reward_function_2: Reward function of second agent
+        :param stockfish_difficulty: Stockfish difficulty level (0..20)
+        :param use_same_model: Set true if agents to use the same model
+        """
+
+
         # set up matplotlib
         plt.ion()
 
-        # if gpu is to be used
+        # set to use either GPU or CPU
         if torch.cuda.is_available():
             self.device = torch.device('cuda')
             print('GPU here')
@@ -45,17 +57,16 @@ class Model:
         self.env = env
         self.env.reset()
 
+        # reward function for first agent
         self.reward_function = reward_function
 
         # Stockfish and model setup
         self.stockfish = None
-        self.dual_model = False
         if stockfish_path is not None:
             self.stockfish = Stockfish(stockfish_path)
             self.stockfish.set_skill_level(stockfish_difficulty)
         elif reward_function_2 is not None:
             self.reward_function_2 = reward_function_2
-            self.dual_model = True
         else:
             raise Exception("Must define opponent model to be either Stockfish or a reward function.")
 
@@ -100,7 +111,7 @@ class Model:
         self.episode_durations = []
 
     def select_action(self, state, agent):
-        assert self.stockfish or self.dual_model
+        assert self.stockfish or self.reward_function_2 is not None
         if self.stockfish and agent == self.env.agents[1]:
             best_action = self.stockfish.get_best_move()
             return self.stockfish_to_pettingzoo(best_action)
@@ -210,16 +221,18 @@ class Model:
             for t in count():
                 action = self.select_action(state, agent)
                 self.env.step(action.item())
-                move = self.pettingzoo_to_stockfish(action)
-                self.stockfish.make_moves_from_current_position([move])
+
+                if self.stockfish:
+                    move = self.pettingzoo_to_stockfish(action)
+                    self.stockfish.make_moves_from_current_position([move])
 
                 observation = self.env.observe(agent)['observation'].flatten()
 
-                if agent == agent[0]:
-                    reward = self.reward_function()
-                elif self.dual_model:
-                    reward = self.reward_function_2()
-                elif self.stockfish is not None:
+                if agent == self.env.agents[0]:
+                    reward = self.reward_function(self.env, agent)
+                elif self.reward_function_2 is not None and agent == self.env.agents[1]:
+                    reward = self.reward_function_2(self.env, agent)
+                elif self.stockfish is not None and agent == self.env.agents[1]:
                     reward = None
                 else:
                     raise Exception
@@ -236,7 +249,7 @@ class Model:
                                               device=self.device).unsqueeze(0)
 
                 # Store the transition in memory
-                if agent == self.env.agents[0] or self.dual_model:
+                if agent == self.env.agents[0] or self.reward_function_2 is not None:
                     reward = torch.tensor([reward], device=self.device)
                     self.memory[agent].push(state, action, next_state, reward)
 
@@ -266,6 +279,17 @@ class Model:
         # self.plot_durations(show_result=True)
         # plt.ioff()
         # plt.show()
+
+    def save_model(self, agent, path):
+        torch.save(self.target_net[agent].state_dict(), path + 'target_net.pt')
+        torch.save(self.policy_net[agent].state_dict(), path + 'policy_net.pt')
+
+    def load_model(self, agent, path):
+        self.target_net[agent].load_state_dict(torch.load(path + 'target_net.pt'))
+        self.target_net[agent].eval()
+
+        self.policy_net[agent].load_state_dict(torch.load(path + 'policy_net.pt'))
+        self.policy_net[agent].eval()
 
     def stockfish_to_pettingzoo(self, move):
         raise NotImplementedError
