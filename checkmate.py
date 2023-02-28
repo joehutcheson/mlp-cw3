@@ -58,10 +58,8 @@ def pettingzoo2stockfish(env, action_value):
                                        f"{type(env_u)} instead"
 
     orig_board = getattr(env_u, "board")
-
-    act = 2421  # King's pawn to e4, classic opening
     legal_moves = chess_utils.legal_moves(orig_board=orig_board)
-    act_uci = chess_utils.actions_to_moves[act]
+    act_uci = chess_utils.actions_to_moves[action_value]
 
     return act_uci
 
