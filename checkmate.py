@@ -31,17 +31,39 @@ def stockfish2pettingzoo(move):
     for act, uci in chess_utils.actions_to_moves.items():
         if uci == move:
             action = act
-
-    assert isinstance(action, int), f"action should be an integer, got {action} instead"
-
+    assert isinstance(action, int), f"action should be an integer, got {action}"
     return action
 
 
-class Checkmate:
+def pettingzoo2stockfish(env, action_value):
     """
-    Checkmate - a python class used for converting Stockfish python API
-    notation to Pettingzoo chess environment action space, and vice versa.
+    This function takes in the current environmnet of the game and an integer
+    representing the action_value produced by the DQN agent. This function
+    then returns the corresponding uci value for the action value.
+
+    This uci value is passed into the Stockfish API when Stockfish recognises
+    that it's the DQN's move.
+    :param env: OrderEnforcingWrapper instance representing the chess
+                environment
+    :param action_value: An integer representing the action value produced from
+                         the DQN, representing it's own move
+    :return: a string representing the action value as a uci move
     """
 
-    def pettingzoo2stockfish(self):
-        pass
+    from pettingzoo.classic.chess.chess import raw_env
+
+    env_u = env.unwrapped.unwrapped.unwrapped
+    assert isinstance(env_u, raw_env), f"given environment can't be reduced " \
+                                       f"to a raw_env instance, got " \
+                                       f"{type(env_u)} instead"
+
+    orig_board = getattr(env_u, "board")
+
+    act = 2421  # King's pawn to e4, classic opening
+    legal_moves = chess_utils.legal_moves(orig_board=orig_board)
+    act_uci = chess_utils.actions_to_moves[act]
+
+    return act_uci
+
+
+
