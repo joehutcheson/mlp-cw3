@@ -19,6 +19,8 @@ from pettingzoo.utils.wrappers.order_enforcing import OrderEnforcingWrapper
 
 from stockfish import Stockfish
 
+from checkmate import pettingzoo2stockfish, stockfish2pettingzoo
+
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
     from IPython import display
@@ -114,7 +116,7 @@ class Model:
         assert self.stockfish or self.reward_function_2 is not None
         if self.stockfish and agent == self.env.agents[1]:
             best_action = self.stockfish.get_best_move()
-            return self.stockfish_to_pettingzoo(best_action)
+            return stockfish2pettingzoo(best_action)
         else:
             sample = random.random()
             eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
@@ -224,7 +226,7 @@ class Model:
                 self.env.step(action.item())
 
                 if self.stockfish:
-                    move = self.pettingzoo_to_stockfish(action)
+                    move = pettingzoo2stockfish(self.env, action)
                     self.stockfish.make_moves_from_current_position([move])
 
                 observation = self.env.observe(agent)['observation'].flatten()
@@ -281,22 +283,16 @@ class Model:
         # plt.ioff()
         # plt.show()
 
-    def save_model(self, agent, path):
-        torch.save(self.target_net[agent].state_dict(), path + 'target_net.pt')
-        torch.save(self.policy_net[agent].state_dict(), path + 'policy_net.pt')
+    def save_model(self, agent, path, name):
+        torch.save(self.target_net[agent].state_dict(), path + name + '_target_net.pt')
+        torch.save(self.policy_net[agent].state_dict(), path + name + '_policy_net.pt')
 
-    def load_model(self, agent, path):
-        self.target_net[agent].load_state_dict(torch.load(path + 'target_net.pt'))
+    def load_model(self, agent, path, name):
+        self.target_net[agent].load_state_dict(torch.load(path + name + '_target_net.pt'))
         self.target_net[agent].eval()
 
-        self.policy_net[agent].load_state_dict(torch.load(path + 'policy_net.pt'))
+        self.policy_net[agent].load_state_dict(torch.load(path + name + '_policy_net.pt'))
         self.policy_net[agent].eval()
-
-    def stockfish_to_pettingzoo(self, move):
-        raise NotImplementedError
-
-    def pettingzoo_to_stockfish(self, action):
-        raise NotImplementedError
 
 
 class DQN(nn.Module):
