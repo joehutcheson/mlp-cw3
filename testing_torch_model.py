@@ -128,7 +128,7 @@ class Model:
                     # t.max(1) will return the largest column value of each row.
                     # second column on max result is index of where max element was
                     # found, so we pick action with the larger expected reward.
-                    policy = self.policy_net[agent](state) * torch.from_numpy(mask)
+                    policy = self.policy_net[agent](state) * torch.from_numpy(mask).to(self.device)
                     if torch.max(policy) <= 0:
                         return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
                                             dtype=torch.long)
