@@ -49,11 +49,12 @@ class Model:
         if torch.cuda.is_available():
             self.device = torch.device('cuda')
             print('GPU here')
+        if torch.backends.mps.is_available():
+            self.device = torch.device('mps')
+            print('MPS here')
         else:
             self.device = torch.device('cpu')
             print('CPU here')
-
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # PettingZoo setup
         self.env = env
@@ -97,8 +98,8 @@ class Model:
         self.target_net = dict()
         self.optimizer = dict()
         for agent in self.env.agents:
-            self.policy_net[agent] = DQN(n_observations, n_actions).to(device)
-            self.target_net[agent] = DQN(n_observations, n_actions).to(device)
+            self.policy_net[agent] = DQN(n_observations, n_actions).to(self.device)
+            self.target_net[agent] = DQN(n_observations, n_actions).to(self.device)
             self.target_net[agent].load_state_dict(self.policy_net[agent].state_dict())
             self.optimizer[agent] = optim.AdamW(self.policy_net[agent].parameters(), lr=self.LR, amsgrad=True)
             self.memory[agent] = ReplayMemory(10000)
