@@ -49,7 +49,7 @@ class Model:
         if torch.cuda.is_available():
             self.device = torch.device('cuda')
             print('GPU here')
-        if torch.backends.mps.is_available():
+        elif torch.backends.mps.is_available():
             self.device = torch.device('mps')
             print('MPS here')
         else:
