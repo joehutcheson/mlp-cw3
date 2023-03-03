@@ -26,7 +26,7 @@ def stockfish2pettingzoo(move):
     # dictionaries.
     assert isinstance(move, str), f"Move is not a string, got {move} instead"
     chess_utils.make_move_mapping(uci_move=move)
-    print(chess_utils.actions_to_moves)
+    # print(chess_utils.actions_to_moves)
     action = None
     for act, uci in chess_utils.actions_to_moves.items():
         if uci == move:
@@ -58,7 +58,7 @@ def pettingzoo2stockfish(env, action_value):
                                        f"{type(env_u)} instead"
 
     orig_board = getattr(env_u, "board")
-    legal_moves = chess_utils.legal_moves(orig_board=orig_board)
+    _ = chess_utils.legal_moves(orig_board=orig_board)
     act_uci = chess_utils.actions_to_moves[action_value]
 
     return act_uci
