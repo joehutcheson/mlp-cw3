@@ -63,6 +63,8 @@ class Model:
         # reward function for first agent
         self.reward_function = reward_function
 
+        self.reward_function_2 = None
+
         # Stockfish and model setup
         self.stockfish = None
         if stockfish_path is not None:
@@ -117,7 +119,7 @@ class Model:
         assert self.stockfish or self.reward_function_2 is not None
         if self.stockfish and agent == self.env.agents[1]:
             best_action = self.stockfish.get_best_move()
-            return stockfish2pettingzoo(best_action)
+            return torch.tensor([[stockfish2pettingzoo(best_action)]], device=self.device, dtype=torch.long)
         else:
             sample = random.random()
             eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
@@ -217,17 +219,51 @@ class Model:
 
         for i_episode in range(num_episodes):
             print(i_episode)
+
             # Initialize the environment and get it's state
             self.env.reset()
+            if self.stockfish:
+                self.stockfish.set_position([])
+
+
+            # DEBUGGING
+            moves_made = []
+            # DEBUGGING
+
             agent = self.env.agent_selection
             state = self.env.observe(agent)['observation'].flatten()
             state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
             for t in count():
+
+                # DEBUGGING
+                if self.stockfish:
+                    s_fen = self.stockfish.get_fen_position()
+                    e_raw = self.env.unwrapped.unwrapped.unwrapped
+                    board = getattr(e_raw, "board")
+                    p_fen = board.fen()
+                    if s_fen != p_fen:
+                        raise Exception(f'Stockfish fen: {s_fen}, Pettingzoo: {p_fen}')
+                # DEBUGGING
+
                 action = self.select_action(state, agent)
+
+                # DEBUGGING
+                pz_legal_moves = []
+                for i in range(len(self.env.observe(agent)['action_mask'])):
+                    if self.env.observe(agent)['action_mask'][i] == 1:
+                        pz_legal_moves.append(i)
+
+                sf_move = stockfish2pettingzoo(self.stockfish.get_best_move())
+
+                if sf_move not in pz_legal_moves:
+                    pass
+                # DEBUGGING
+
                 self.env.step(action.item())
 
                 if self.stockfish:
-                    move = pettingzoo2stockfish(self.env, action)
+                    move = pettingzoo2stockfish(self.env, action.item())
+                    moves_made.append(move)
                     self.stockfish.make_moves_from_current_position([move])
 
                 observation = self.env.observe(agent)['observation'].flatten()

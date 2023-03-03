@@ -26,11 +26,13 @@ def stockfish2pettingzoo(move):
     # dictionaries.
     assert isinstance(move, str), f"Move is not a string, got {move} instead"
     chess_utils.make_move_mapping(uci_move=move)
-    print(chess_utils.actions_to_moves)
-    action = None
-    for act, uci in chess_utils.actions_to_moves.items():
-        if uci == move:
-            action = act
+    action = chess_utils.moves_to_actions[move]
+
+    # print(chess_utils.actions_to_moves)
+    # action = None
+    # for act, uci in chess_utils.actions_to_moves.items():
+    #     if uci == move:
+    #         action = act
     assert isinstance(action, int), f"action should be an integer, got {action}"
     return action
 
