@@ -1,6 +1,7 @@
 __author__ = "Callum Alexander"
 __email__ = "s1931801@ed.ac.uk"
 
+import chess
 import chess as pychess
 from pettingzoo.utils import OrderEnforcingWrapper
 from pettingzoo.classic.chess import chess_utils
@@ -54,6 +55,7 @@ def mobility_reward(env: OrderEnforcingWrapper) -> int:
     """
     agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
     board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+    assert isinstance(board, chess.Board)
     legal_moves = chess_utils.legal_moves(board)
     return len(legal_moves)
 
