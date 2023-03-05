@@ -52,11 +52,10 @@ def mobility_reward(env: OrderEnforcingWrapper) -> int:
                 environment
     :return: int representing the reward at the given state
     """
-    agent = env.agent_selection
+    agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
     board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
     legal_moves = chess_utils.legal_moves(board)
-
-    return 0
+    return len(legal_moves)
 
 
 def control_of_centre_reward(env: OrderEnforcingWrapper) -> int:
