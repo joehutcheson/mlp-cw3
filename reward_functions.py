@@ -3,6 +3,7 @@ __email__ = "s1931801@ed.ac.uk"
 
 import chess as pychess
 from pettingzoo.utils import OrderEnforcingWrapper
+from pettingzoo.classic.chess import chess_utils
 
 
 class RewardFunction:
@@ -44,21 +45,25 @@ def material_advantage_reward(env: OrderEnforcingWrapper) -> int:
     return 0
 
 
-def mobility_reward(env):
+def mobility_reward(env: OrderEnforcingWrapper) -> int:
     """
     A positive reward signal for having a greater number of available moves.
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :return: int representing the reward at the given state
     """
-    pass
+    agent = env.agent_selection
+    board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+    legal_moves = chess_utils.legal_moves(board)
+
+    return 0
 
 
-def control_of_centre_reward(env):
+def control_of_centre_reward(env: OrderEnforcingWrapper) -> int:
     """
     A positive reward signal for controlling the central squares of the board.
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :return: int representing the reward at the given state
     """
-    pass
+    return 0
