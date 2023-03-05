@@ -31,7 +31,27 @@ def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
                 environment
     :return: int representing the reward at the given state
     """
-    pass
+
+    piece_values = {
+        chess.PAWN: 1,
+        chess.KNIGHT: 3,
+        chess.BISHOP: 3,
+        chess.ROOK: 5,
+        chess.QUEEN: 9,
+        chess.KING: float("inf")
+    }
+
+    agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
+    board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+    assert isinstance(board, chess.Board)
+    last_move = board.peek()
+    assert isinstance(last_move, chess.Move)
+    if board.is_capture(last_move):
+        # Get the captured piece type
+        captured_piece = board.piece_at(last_move.to_square)
+        return piece_values[captured_piece]
+    else:
+        return 0
 
 
 def material_advantage_reward(env: OrderEnforcingWrapper) -> int:
