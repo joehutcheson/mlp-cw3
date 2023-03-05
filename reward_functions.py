@@ -19,6 +19,7 @@ class RewardFunction:
 
 def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
     """
+    TODO - not tested
     A positive reward signal for capturing opponent's pieces.
     agent makes move
     checks for reward
@@ -93,11 +94,30 @@ def mobility_reward(env: OrderEnforcingWrapper) -> int:
     return len(legal_moves)
 
 
-def control_of_centre_reward(env: OrderEnforcingWrapper) -> int:
+def control_of_centre_reward(env: OrderEnforcingWrapper) -> float:
     """
     A positive reward signal for controlling the central squares of the board.
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :return: int representing the reward at the given state
     """
-    return 0
+    agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
+    board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+    assert isinstance(board, chess.Board)
+
+    # Define the central squares of the board
+    center_squares = [chess.E4, chess.D4, chess.E5, chess.D5]
+
+    # Get the number of pieces each player has controlling the central squares
+    white_control = sum([1 for sq in center_squares if
+                         board.piece_at(sq) and board.piece_at(
+                             sq).color == chess.WHITE])
+    black_control = sum([1 for sq in center_squares if
+                         board.piece_at(sq) and board.piece_at(
+                             sq).color == chess.BLACK])
+
+    # Calculate the central control valuation as the difference between the
+    # number of pieces controlling the central squares for each player
+    central_control_valuation = white_control - black_control
+
+    return central_control_valuation
