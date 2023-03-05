@@ -19,6 +19,8 @@ from pettingzoo.utils.wrappers.order_enforcing import OrderEnforcingWrapper
 
 from stockfish import Stockfish
 
+from checkmate import pettingzoo2stockfish, stockfish2pettingzoo
+
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
     from IPython import display
@@ -47,11 +49,12 @@ class Model:
         if torch.cuda.is_available():
             self.device = torch.device('cuda')
             print('GPU here')
+        elif torch.backends.mps.is_available():
+            self.device = torch.device('mps')
+            print('MPS here')
         else:
             self.device = torch.device('cpu')
             print('CPU here')
-
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # PettingZoo setup
         self.env = env
@@ -59,6 +62,8 @@ class Model:
 
         # reward function for first agent
         self.reward_function = reward_function
+
+        self.reward_function_2 = None
 
         # Stockfish and model setup
         self.stockfish = None
@@ -95,8 +100,8 @@ class Model:
         self.target_net = dict()
         self.optimizer = dict()
         for agent in self.env.agents:
-            self.policy_net[agent] = DQN(n_observations, n_actions).to(device)
-            self.target_net[agent] = DQN(n_observations, n_actions).to(device)
+            self.policy_net[agent] = DQN(n_observations, n_actions).to(self.device)
+            self.target_net[agent] = DQN(n_observations, n_actions).to(self.device)
             self.target_net[agent].load_state_dict(self.policy_net[agent].state_dict())
             self.optimizer[agent] = optim.AdamW(self.policy_net[agent].parameters(), lr=self.LR, amsgrad=True)
             self.memory[agent] = ReplayMemory(10000)
@@ -114,7 +119,7 @@ class Model:
         assert self.stockfish or self.reward_function_2 is not None
         if self.stockfish and agent == self.env.agents[1]:
             best_action = self.stockfish.get_best_move()
-            return self.stockfish_to_pettingzoo(best_action)
+            return torch.tensor([[stockfish2pettingzoo(best_action)]], device=self.device, dtype=torch.long)
         else:
             sample = random.random()
             eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
@@ -126,7 +131,7 @@ class Model:
                     # t.max(1) will return the largest column value of each row.
                     # second column on max result is index of where max element was
                     # found, so we pick action with the larger expected reward.
-                    policy = self.policy_net[agent](state) * mask
+                    policy = self.policy_net[agent](state) * torch.from_numpy(mask).to(self.device)
                     if torch.max(policy) <= 0:
                         return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
                                             dtype=torch.long)
@@ -214,17 +219,51 @@ class Model:
 
         for i_episode in range(num_episodes):
             print(i_episode)
+
             # Initialize the environment and get it's state
             self.env.reset()
+            if self.stockfish:
+                self.stockfish.set_position([])
+
+
+            # DEBUGGING
+            moves_made = []
+            # DEBUGGING
+
             agent = self.env.agent_selection
             state = self.env.observe(agent)['observation'].flatten()
             state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
             for t in count():
+
+                # DEBUGGING
+                if self.stockfish:
+                    s_fen = self.stockfish.get_fen_position()
+                    e_raw = self.env.unwrapped.unwrapped.unwrapped
+                    board = getattr(e_raw, "board")
+                    p_fen = board.fen()
+                    if s_fen != p_fen:
+                        raise Exception(f'Stockfish fen: {s_fen}, Pettingzoo: {p_fen}')
+                # DEBUGGING
+
                 action = self.select_action(state, agent)
+
+                # DEBUGGING
+                pz_legal_moves = []
+                for i in range(len(self.env.observe(agent)['action_mask'])):
+                    if self.env.observe(agent)['action_mask'][i] == 1:
+                        pz_legal_moves.append(i)
+
+                sf_move = stockfish2pettingzoo(self.stockfish.get_best_move())
+
+                if sf_move not in pz_legal_moves:
+                    pass
+                # DEBUGGING
+
                 self.env.step(action.item())
 
                 if self.stockfish:
-                    move = self.pettingzoo_to_stockfish(action)
+                    move = pettingzoo2stockfish(self.env, action.item())
+                    moves_made.append(move)
                     self.stockfish.make_moves_from_current_position([move])
 
                 observation = self.env.observe(agent)['observation'].flatten()
@@ -281,22 +320,17 @@ class Model:
         # plt.ioff()
         # plt.show()
 
-    def save_model(self, agent, path):
-        torch.save(self.target_net[agent].state_dict(), path + 'target_net.pt')
-        torch.save(self.policy_net[agent].state_dict(), path + 'policy_net.pt')
+    def save_model(self, agent, path, name):
+        torch.save(self.target_net[agent].state_dict(), path + name + '_target_net.pt')
+        torch.save(self.policy_net[agent].state_dict(), path + name + '_policy_net.pt')
 
-    def load_model(self, agent, path):
-        self.target_net[agent].load_state_dict(torch.load(path + 'target_net.pt'))
+    def load_model(self, agent, path, name):
+        self.target_net[agent].load_state_dict(torch.load(path + name + '_target_net.pt'))
         self.target_net[agent].eval()
 
-        self.policy_net[agent].load_state_dict(torch.load(path + 'policy_net.pt'))
+        self.policy_net[agent].load_state_dict(torch.load(path + name + '_policy_net.pt'))
         self.policy_net[agent].eval()
 
-    def stockfish_to_pettingzoo(self, move):
-        raise NotImplementedError
-
-    def pettingzoo_to_stockfish(self, action):
-        raise NotImplementedError
 
 
 class DQN(nn.Module):

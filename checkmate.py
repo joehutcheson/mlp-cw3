@@ -24,14 +24,10 @@ def stockfish2pettingzoo(move):
 
     # This method makes a move-mapping and inserts it into the two
     # dictionaries.
-    assert isinstance(move, str), f"Move is not a string, got {move} instead"
+    assert isinstance(move, str), f"[-] Move is not a string, got {move} instead"
     chess_utils.make_move_mapping(uci_move=move)
-    # print(chess_utils.actions_to_moves)
-    action = None
-    for act, uci in chess_utils.actions_to_moves.items():
-        if uci == move:
-            action = act
-    assert isinstance(action, int), f"action should be an integer, got {action}"
+    action = chess_utils.moves_to_actions[move]
+    assert isinstance(action, int), f"[-] action should be an integer, got {action}"
     return action
 
 
@@ -51,17 +47,21 @@ def pettingzoo2stockfish(env, action_value):
     """
 
     from pettingzoo.classic.chess.chess import raw_env
-
     env_u = env.unwrapped.unwrapped.unwrapped
-    assert isinstance(env_u, raw_env), f"given environment can't be reduced " \
+    assert isinstance(env_u, raw_env), f"[-] given environment can't be reduced " \
                                        f"to a raw_env instance, got " \
                                        f"{type(env_u)} instead"
 
     orig_board = getattr(env_u, "board")
-    _ = chess_utils.legal_moves(orig_board=orig_board)
-    act_uci = chess_utils.actions_to_moves[action_value]
-
+    lm = chess_utils.legal_moves(orig_board=orig_board)  # This should make a
+    # move mapping
+    assert action_value in lm, f"[-] Action `{action_value}` not in legal " \
+                               f"moves, `{lm}`"  # check action_value in
+    # legal moves, otherwise this function is screwed
+    player = bool(env.agents.index(env.agent_selection))
+    act_uci = None
+    try:
+        act_uci = chess_utils.action_to_move(orig_board, action_value, player)
+    except:
+        print(f"[-] {action_value} may not be legal")
     return act_uci
-
-
-
