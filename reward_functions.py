@@ -45,7 +45,8 @@ def material_advantage_reward(env: OrderEnforcingWrapper) -> int:
     from chess import SQUARES
     agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
     board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
-
+    assert isinstance(board, chess.Board)
+    # board.set_fen("r2qkbnr/ppp2ppp/2n5/3p1b2/2PPN2P/8/PP2PPP1/RNBQKB1R")
     for sq in SQUARES:
         piece = board.piece_at(sq)
         if piece is not None:
@@ -54,7 +55,8 @@ def material_advantage_reward(env: OrderEnforcingWrapper) -> int:
             else:
                 black_count += 1
 
-    return white_count - black_count if agent == 0 else black_count - white_count
+    return white_count - black_count if agent == 0 \
+        else black_count - white_count
 
 
 def mobility_reward(env: OrderEnforcingWrapper) -> int:
