@@ -39,12 +39,24 @@ def material_advantage_reward(env: OrderEnforcingWrapper) -> int:
                 environment
     :return: int representing the reward at the given state
     """
-    pass
+    white_count, black_count = 0, 0
+
+    return 0
 
 
 def mobility_reward(env):
     """
     A positive reward signal for having a greater number of available moves.
+    :param env: OrderEnforcingWrapper instance representing the chess
+                environment
+    :return: int representing the reward at the given state
+    """
+    pass
+
+
+def control_of_centre_reward(env):
+    """
+    A positive reward signal for controlling the central squares of the board.
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :return: int representing the reward at the given state
