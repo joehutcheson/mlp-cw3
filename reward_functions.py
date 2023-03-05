@@ -96,6 +96,7 @@ def mobility_reward(env: OrderEnforcingWrapper) -> int:
 
 def control_of_centre_reward(env: OrderEnforcingWrapper) -> float:
     """
+    # TODO - test test test this function
     A positive reward signal for controlling the central squares of the board.
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
@@ -121,3 +122,42 @@ def control_of_centre_reward(env: OrderEnforcingWrapper) -> float:
     central_control_valuation = white_control - black_control
 
     return central_control_valuation
+
+
+def king_safety_reward(env: OrderEnforcingWrapper) -> int:
+    """
+    # TODO - test test test
+    A positive reward signal for keeping the king protected.
+    :param env: OrderEnforcingWrapper instance representing the chess
+                environment
+    :return: int representing the reward at the given state
+    """
+
+    agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
+    board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+    assert isinstance(board, chess.Board)
+
+    # Get the position of the kings on the board
+    white_king_sq = board.king(chess.WHITE)
+    black_king_sq = board.king(chess.BLACK)
+
+    # Check if each king is in check
+    white_king_in_check = board.is_check() and board.turn == chess.WHITE
+    black_king_in_check = board.is_check() and board.turn == chess.BLACK
+
+    # Calculate the number of pieces defending each king
+    white_defenders = len(board.attackers(chess.WHITE, white_king_sq))
+    black_defenders = len(board.attackers(chess.BLACK, black_king_sq))
+
+    # Calculate the king safety score as the difference between the number of
+    # defenders for each king
+    king_safety_score = white_defenders - black_defenders
+
+    # Adjust the king safety score if a king is in check
+    if white_king_in_check:
+        king_safety_score += -1
+    elif black_king_in_check:
+        king_safety_score += 1
+
+    return king_safety_score
+
