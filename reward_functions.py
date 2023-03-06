@@ -5,8 +5,30 @@ import chess
 import chess as pychess
 from pettingzoo.utils import OrderEnforcingWrapper
 from pettingzoo.classic.chess import chess_utils
+import numpy as np
 
 
+# ---- Normalisation Functions ----
+def normalize_rewards(reward_list):
+    """
+    Normalizes a list of reward signals using min-max scaling and returns a
+    single aggregated reward signal.
+    :param: reward_list: List of reward signals
+    """
+    normalized_rewards = []
+    for rewards in reward_list:
+        min_reward = np.min(rewards)
+        max_reward = np.max(rewards)
+        if max_reward == min_reward:
+            normalized_rewards.append(np.array(rewards))
+        else:
+            normalized_rewards.append(
+                (np.array(rewards) - min_reward) / (max_reward - min_reward))
+    aggregated_reward = np.mean(normalized_rewards, axis=0)
+    return aggregated_reward
+
+
+# ---- Reward Functions ----
 class RewardFunction:
 
     def __init__(self, env_, agent_):
@@ -45,6 +67,7 @@ def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
     agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
     board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
     assert isinstance(board, chess.Board)
+
     last_move = board.peek()
     assert isinstance(last_move, chess.Move)
     if board.is_capture(last_move):
@@ -53,6 +76,42 @@ def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
         return piece_values[captured_piece]
     else:
         return 0
+
+
+def castling_reward(env: OrderEnforcingWrapper) -> int:
+    agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
+    board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+    assert isinstance(board, chess.Board)
+
+    if board.move_stack:
+        # Get the last move in the move stack
+        last_move = board.peek()
+
+        # Check if the last move was a castling move
+        if board.is_castling(last_move):
+            # Get the color of the player who made the move
+            player_color = board.turn
+
+            # Determine which side the player castled on
+            if last_move.to_square == chess.G1:
+                # Kingside castle for white
+                if player_color == chess.WHITE:
+                    return 1
+            elif last_move.to_square == chess.C1:
+                # Queenside castle for white
+                if player_color == chess.WHITE:
+                    return 1
+            elif last_move.to_square == chess.G8:
+                # Kingside castle for black
+                if player_color == chess.BLACK:
+                    return 1
+            elif last_move.to_square == chess.C8:
+                # Queenside castle for black
+                if player_color == chess.BLACK:
+                    return 1
+
+    # Return zero if the last move was not a castling move
+    return 0
 
 
 def material_advantage_reward(env: OrderEnforcingWrapper) -> int:
@@ -248,4 +307,3 @@ def pawn_structure_reward(env: OrderEnforcingWrapper) -> int:
 
     # Return the difference between the pawn structure scores for each player
     return white_pawn_score - black_pawn_score
-
