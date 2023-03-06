@@ -259,12 +259,14 @@ class Model:
                     pass
                 # DEBUGGING
 
-                self.env.step(action.item())
+
 
                 if self.stockfish:
                     move = pettingzoo2stockfish(self.env, action.item())
                     moves_made.append(move)
                     self.stockfish.make_moves_from_current_position([move])
+
+                self.env.step(action.item())
 
                 observation = self.env.observe(agent)['observation'].flatten()
 
