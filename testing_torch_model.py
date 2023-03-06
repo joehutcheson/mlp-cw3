@@ -41,11 +41,10 @@ class Model:
         :param use_same_model: Set true if agents to use the same model
         """
 
-
         # set up matplotlib
         plt.ion()
 
-        # set to use either GPU or CPU
+        # set to use either GPU or CPU or Apple Metal
         if torch.cuda.is_available():
             self.device = torch.device('cuda')
             print('GPU here')
@@ -63,14 +62,15 @@ class Model:
         # reward function for first agent
         self.reward_function = reward_function
 
-        self.reward_function_2 = None
-
-        # Stockfish and model setup
+        # Second agent setup
         self.stockfish = None
+        self.reward_function_2 = None
         if stockfish_path is not None:
+            # Second agent is stockfish
             self.stockfish = Stockfish(stockfish_path)
             self.stockfish.set_skill_level(stockfish_difficulty)
         elif reward_function_2 is not None:
+            # Second agent is our model
             self.reward_function_2 = reward_function_2
         else:
             raise Exception("Must define opponent model to be either Stockfish or a reward function.")
@@ -90,11 +90,12 @@ class Model:
         self.TAU = 0.005
         self.LR = 1e-4
 
-        # Get number of actions from gym action space
+        # Get number of actions from pettingzoo action space
         n_actions = env.action_space('player_0').n
         # Get the number of state observations
         n_observations = math.prod(env.observe('player_0')['observation'].shape)
 
+        # Model setup. Model is stores as dictionaries which are accessed by agent
         self.memory = dict()
         self.policy_net = dict()
         self.target_net = dict()
@@ -106,7 +107,10 @@ class Model:
             self.optimizer[agent] = optim.AdamW(self.policy_net[agent].parameters(), lr=self.LR, amsgrad=True)
             self.memory[agent] = ReplayMemory(10000)
 
-        if use_same_model:
+        # Second model is set to point to the first model if using the same model for both agents
+        # Each agent still has its own replay memory
+        self.use_same_model = use_same_model
+        if self.use_same_model:
             self.policy_net[self.env.agents[1]] = self.policy_net[self.env.agents[0]]
             self.target_net[self.env.agents[1]] = self.target_net[self.env.agents[0]]
             self.optimizer[self.env.agents[1]] = self.optimizer[self.env.agents[0]]
@@ -116,11 +120,14 @@ class Model:
         self.episode_durations = []
 
     def select_action(self, state, agent):
+        # TODO: Have agents alternate taking first turn with each game
         assert self.stockfish or self.reward_function_2 is not None
         if self.stockfish and agent == self.env.agents[1]:
+            # Stockfish decides move
             best_action = self.stockfish.get_best_move()
-            return torch.tensor([[stockfish2pettingzoo(best_action)]], device=self.device, dtype=torch.long)
+            return torch.tensor([[stockfish2pettingzoo(self.env, best_action)]], device=self.device, dtype=torch.long)
         else:
+            # Our model decides move
             sample = random.random()
             eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * \
                             math.exp(-1. * self.steps_done / self.EPS_DECAY)
@@ -135,8 +142,9 @@ class Model:
                     if torch.max(policy) <= 0:
                         return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
                                             dtype=torch.long)
-                    return (policy).max(1)[1].view(1, 1)
+                    return policy.max(1)[1].view(1, 1)
             else:
+                # Chooses a random move at the beginning of training
                 return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
                                     dtype=torch.long)
 
@@ -220,56 +228,34 @@ class Model:
         for i_episode in range(num_episodes):
             print(i_episode)
 
-            # Initialize the environment and get it's state
+            # Initialize the environment and get its state
             self.env.reset()
             if self.stockfish:
                 self.stockfish.set_position([])
 
-
-            # DEBUGGING
+            # Record the moves made in a game
             moves_made = []
-            # DEBUGGING
 
             agent = self.env.agent_selection
             state = self.env.observe(agent)['observation'].flatten()
             state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
             for t in count():
 
-                # DEBUGGING
-                if self.stockfish:
-                    s_fen = self.stockfish.get_fen_position()
-                    e_raw = self.env.unwrapped.unwrapped.unwrapped
-                    board = getattr(e_raw, "board")
-                    p_fen = board.fen()
-                    if s_fen != p_fen:
-                        raise Exception(f'Stockfish fen: {s_fen}, Pettingzoo: {p_fen}')
-                # DEBUGGING
-
+                # Get the next action
                 action = self.select_action(state, agent)
 
-                # DEBUGGING
-                pz_legal_moves = []
-                for i in range(len(self.env.observe(agent)['action_mask'])):
-                    if self.env.observe(agent)['action_mask'][i] == 1:
-                        pz_legal_moves.append(i)
-
-                sf_move = stockfish2pettingzoo(self.stockfish.get_best_move())
-
-                if sf_move not in pz_legal_moves:
-                    pass
-                # DEBUGGING
-
-
-
+                # Update the stockfish board if in use
                 if self.stockfish:
                     move = pettingzoo2stockfish(self.env, action.item())
                     moves_made.append(move)
                     self.stockfish.make_moves_from_current_position([move])
 
+                # Update the pettingzoo environment
                 self.env.step(action.item())
 
                 observation = self.env.observe(agent)['observation'].flatten()
 
+                # Calculate the reward
                 if agent == self.env.agents[0]:
                     reward = self.reward_function(self.env, agent)
                 elif self.reward_function_2 is not None and agent == self.env.agents[1]:
@@ -279,9 +265,9 @@ class Model:
                 else:
                     raise Exception
 
+                # Check for end states
                 terminated = self.env.terminations[agent]
                 truncated = self.env.truncations[agent]
-
                 done = terminated or truncated
 
                 if terminated:
@@ -299,6 +285,7 @@ class Model:
                 state = next_state
 
                 # Perform one step of the optimization (on the policy network)
+                # TODO: this really should only happen when our model is takng a turn
                 self.optimize_model(agent)
 
                 # Soft update of the target network's weights
@@ -332,7 +319,6 @@ class Model:
 
         self.policy_net[agent].load_state_dict(torch.load(path + name + '_policy_net.pt'))
         self.policy_net[agent].eval()
-
 
 
 class DQN(nn.Module):
