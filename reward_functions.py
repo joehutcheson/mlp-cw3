@@ -163,6 +163,13 @@ def king_safety_reward(env: OrderEnforcingWrapper) -> int:
 
 
 def pawn_structure_reward(env: OrderEnforcingWrapper) -> int:
+    """
+    A positive reward signal for having a strong pawn structure.
+    Heavy lifting done by evaluate_pawns() helper function.
+    :param env: OrderEnforcingWrapper instance representing the chess
+                environment
+    :return: int representing the reward at the given state
+    """
 
     agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
     board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
@@ -178,6 +185,20 @@ def pawn_structure_reward(env: OrderEnforcingWrapper) -> int:
     # Define a helper function to calculate pawn structure scores for each
     # player
     def evaluate_pawns(pawns, color):
+        """
+        Helper function for evaluating the structure of a player's pawns.
+        Scores 3 heuristics for determining good or bad pawn structure:
+
+        - Isolated pawn: An isolated pawn in chess is a pawn that has no other pawns of the same color on adjacent files.
+        - Doubled pawn: A doubled pawn in chess is a situation where two pawns of the same color are on the same file, one behind the other.
+        - Passed pawn: A passed pawn in chess is a pawn that has no opposing pawns on its path to promotion which means it has the potential to advance and become a queen.
+
+        :param pawns: SquareSet representing the list of squares filled by
+        pawns of a certain colour
+        :param color: Boolean value representing
+        the colour of the pawns being played. White == True, False == Black
+        :return: pawn structure score
+        """
         score = 0
         for pawn_sq in pawns:
             pawn_file = chess.square_file(pawn_sq)
