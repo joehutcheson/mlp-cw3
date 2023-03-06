@@ -161,3 +161,69 @@ def king_safety_reward(env: OrderEnforcingWrapper) -> int:
 
     return king_safety_score
 
+
+def pawn_structure_reward(env: OrderEnforcingWrapper) -> int:
+
+    agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
+    board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+    assert isinstance(board, chess.Board)
+    # Initialize variables to store pawn counts and scores for each player
+    white_pawns = board.pieces(chess.PAWN, chess.WHITE)
+    black_pawns = board.pieces(chess.PAWN, chess.BLACK)
+    white_pawn_count = len(white_pawns)
+    black_pawn_count = len(black_pawns)
+    white_pawn_score = 0
+    black_pawn_score = 0
+
+    # Define a helper function to calculate pawn structure scores for each
+    # player
+    def evaluate_pawns(pawns, color):
+        score = 0
+        for pawn_sq in pawns:
+            pawn_file = chess.square_file(pawn_sq)
+            pawn_rank = chess.square_rank(pawn_sq)
+
+            # Check if the pawn is isolated
+            is_isolated = True
+            for file_offset in (-1, 1):
+                if (0 <= pawn_file + file_offset <= 7 and
+                    board.piece_type_at(chess.square(pawn_file + file_offset,
+                                                     pawn_rank)) == chess.PAWN and
+                    board.color_at(chess.square(pawn_file + file_offset,
+                                                pawn_rank)) == color):
+                    is_isolated = False
+                    break
+            if is_isolated:
+                score -= 10
+
+            # Check if the pawn is doubled
+            if board.pawns_on_file(pawn_file) > 1:
+                score -= 5
+
+            # Check if the pawn is passed
+            is_passed = True
+            for rank_offset in (-1, 1):
+                for file_offset in (-1, 1):
+                    if (0 <= pawn_file + file_offset <= 7 and
+                        0 <= pawn_rank + rank_offset <= 7 and
+                        board.piece_type_at(
+                            chess.square(pawn_file + file_offset,
+                                         pawn_rank + rank_offset)) == chess.PAWN and
+                        board.color_at(chess.square(pawn_file + file_offset,
+                                                    pawn_rank + rank_offset)) == color):
+                        is_passed = False
+                        break
+                if not is_passed:
+                    break
+            if is_passed:
+                score += 10
+
+        return score
+
+    # Calculate pawn structure scores for each player
+    white_pawn_score = evaluate_pawns(white_pawns, chess.WHITE)
+    black_pawn_score = evaluate_pawns(black_pawns, chess.BLACK)
+
+    # Return the difference between the pawn structure scores for each player
+    return white_pawn_score - black_pawn_score
+
