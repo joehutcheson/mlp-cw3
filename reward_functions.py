@@ -166,6 +166,7 @@ def pawn_structure_reward(env: OrderEnforcingWrapper) -> int:
     """
     A positive reward signal for having a strong pawn structure.
     Heavy lifting done by evaluate_pawns() helper function.
+    TODO - not tested
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :return: int representing the reward at the given state
