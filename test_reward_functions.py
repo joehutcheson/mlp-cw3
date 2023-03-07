@@ -88,7 +88,20 @@ class MyTestCase(unittest.TestCase):
         # Check that the reward is 9 (the value of a captured queen)
         self.assertEqual(piece_capture_reward(env), 3)
 
+    def test_capture_rook(self):
+        # Set up the environment
+        env = ch.env(render_mode='ansi')
+        env.reset()
+        board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+        board.set_fen("1k6/2r5/1P6/8/8/8/8/4K3 w - - 0 1")
 
+        print(env.render())
+        # Perform a move that captures a queen
+        env.step(checkmate.stockfish2pettingzoo(env,
+                                                chess.Move(chess.B6,
+                                                           chess.C7).__str__()))
+        # Check that the reward is 9 (the value of a captured queen)
+        self.assertEqual(piece_capture_reward(env), 5)
 
 
 if __name__ == '__main__':
