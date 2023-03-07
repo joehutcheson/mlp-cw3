@@ -1,5 +1,3 @@
-import os
-os.chdir('/home/s1951999/mlp-cw3')
 import testing_torch_model
 from reward_functions import *
 from pettingzoo.classic import chess_v5 as chess
