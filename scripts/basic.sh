@@ -1,3 +1,3 @@
 #!/bin/sh
 
-python scripts/basic.py
+python basic.py
