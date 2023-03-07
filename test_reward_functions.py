@@ -6,9 +6,9 @@ from pettingzoo.utils.wrappers import OrderEnforcingWrapper
 from pettingzoo.classic import chess_v5 as ch
 
 
-class MyTestCase(unittest.TestCase):
+class TestCapturePieceReward(unittest.TestCase):
 
-    def test_something(self):
+    def always_true_test(self):
         self.assertEqual(True, True)  # add assertion here
 
     def test_no_capture(self):
@@ -37,7 +37,6 @@ class MyTestCase(unittest.TestCase):
         env.step(checkmate.stockfish2pettingzoo(env,
                                                 chess.Move(chess.D7,
                                                            chess.D5).__str__()))
-        print(env.render())
         env.step(checkmate.stockfish2pettingzoo(env,
                                                 chess.Move(chess.E4,
                                                            chess.D5).__str__()))
@@ -51,7 +50,6 @@ class MyTestCase(unittest.TestCase):
         board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
         board.set_fen("1k6/2q5/1P6/8/8/8/8/4K3 w - - 0 1")
 
-        print(env.render())
         # Perform a move that captures a queen
         env.step(checkmate.stockfish2pettingzoo(env,
                                                 chess.Move(chess.B6,
@@ -66,7 +64,6 @@ class MyTestCase(unittest.TestCase):
         board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
         board.set_fen("1k6/2b5/1P6/8/8/8/8/4K3 w - - 0 1")
 
-        print(env.render())
         # Perform a move that captures a queen
         env.step(checkmate.stockfish2pettingzoo(env,
                                                 chess.Move(chess.B6,
@@ -81,7 +78,6 @@ class MyTestCase(unittest.TestCase):
         board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
         board.set_fen("1k6/2n5/1P6/8/8/8/8/4K3 w - - 0 1")
 
-        print(env.render())
         # Perform a move that captures a queen
         env.step(checkmate.stockfish2pettingzoo(env,
                                                 chess.Move(chess.B6,
@@ -96,13 +92,46 @@ class MyTestCase(unittest.TestCase):
         board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
         board.set_fen("1k6/2r5/1P6/8/8/8/8/4K3 w - - 0 1")
 
-        print(env.render())
         # Perform a move that captures a queen
         env.step(checkmate.stockfish2pettingzoo(env,
                                                 chess.Move(chess.B6,
                                                            chess.C7).__str__()))
         # Check that the reward is 9 (the value of a captured queen)
         self.assertEqual(piece_capture_reward(env), 5)
+
+
+class TestCastlingReward(unittest.TestCase):
+
+    def test_always_true(self):
+        self.assertEqual(True, True)
+
+    def test_castling(self):
+        env = ch.env(render_mode='ansi')
+        env.reset()
+        board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+        board.set_fen("rnbqkbnr/pppppppp/8/8/8/4PN2/PPPP1PPP/RNBQK2R w KQkq - "
+                      "0 1")
+
+        env.step(checkmate.stockfish2pettingzoo(env, chess.Move.from_uci(
+            'e1g1').__str__()))
+
+        print(env.render())
+
+        self.assertEqual(castling_reward(env), 1)
+
+    def test_not_castling_move(self):
+
+        env = ch.env(render_mode='ansi')
+        env.reset()
+        board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+        board.set_fen("1k6/2r5/1P6/8/8/8/8/4K3 w - - 0 1")
+
+        # Perform a move that captures a queen
+        env.step(checkmate.stockfish2pettingzoo(env,
+                                                chess.Move(chess.B6,
+                                                           chess.C7).__str__()))
+
+        self.assertEqual(castling_reward(env), 0)
 
 
 if __name__ == '__main__':

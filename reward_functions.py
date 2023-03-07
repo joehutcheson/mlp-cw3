@@ -84,12 +84,15 @@ def castling_reward(env: OrderEnforcingWrapper) -> int:
 
     if board.move_stack:
         # Get the last move in the move stack
-        last_move = board.peek()
+        last_board = board.copy()  # Makes a copy
+        last_move = last_board.pop()  # Undoes the last move and assigns it
+        assert isinstance(last_move, chess.Move)
+        assert last_board.fen() != board.fen()
 
         # Check if the last move was a castling move
-        if board.is_castling(last_move):
+        if last_board.is_castling(last_move):
             # Get the color of the player who made the move
-            player_color = board.turn
+            player_color = last_board.turn
 
             # Determine which side the player castled on
             if last_move.to_square == chess.G1:
