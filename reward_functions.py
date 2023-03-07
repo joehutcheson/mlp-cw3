@@ -69,7 +69,7 @@ def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
 
     if last_board.is_capture(last_move):
         # Get the captured piece type
-        captured_piece = board.piece_at(last_move.to_square).piece_type
+        captured_piece = last_board.piece_at(last_move.to_square).piece_type
         last_board = board.copy()
         return piece_values[captured_piece]
     else:
