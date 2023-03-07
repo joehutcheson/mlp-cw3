@@ -28,7 +28,7 @@ if is_ipython:
 
 class Model:
     def __init__(self, env: OrderEnforcingWrapper,
-                 reward_function, stockfish_path=None, reward_function_2=None, stockfish_difficulty=20,
+                 reward_function, stockfish_path=None, reward_function_2=None, stockfish_difficulty=500,
                  use_same_model=False):
 
         """
@@ -67,8 +67,8 @@ class Model:
         self.reward_function_2 = None
         if stockfish_path is not None:
             # Second agent is stockfish
-            self.stockfish = Stockfish(stockfish_path)
-            self.stockfish.set_skill_level(stockfish_difficulty)
+            self.stockfish = Stockfish(stockfish_path, parameters={"Threads": 4, "Minimum Thinking Time": 10})
+            self.stockfish.set_elo_rating(stockfish_difficulty)
         elif reward_function_2 is not None:
             # Second agent is our model
             self.reward_function_2 = reward_function_2
