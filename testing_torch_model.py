@@ -257,9 +257,9 @@ class Model:
 
                 # Calculate the reward
                 if agent == self.env.agents[0]:
-                    reward = self.reward_function(self.env, agent)
+                    reward = self.reward_function(self.env)
                 elif self.reward_function_2 is not None and agent == self.env.agents[1]:
-                    reward = self.reward_function_2(self.env, agent)
+                    reward = self.reward_function_2(self.env)
                 elif self.stockfish is not None and agent == self.env.agents[1]:
                     reward = None
                 else:
