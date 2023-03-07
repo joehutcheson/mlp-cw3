@@ -7,7 +7,7 @@ env.reset()
 
 
 model = testing_torch_model.Model(env, reward_function=material_advantage_reward,
-                                  stockfish_path='/opt/homebrew/Cellar/stockfish/15.1/bin/stockfish',
+                                  stockfish_path='/home/s1951999/stockfish_15.1_linux_x64/stockfish-ubuntu-20.04-x86-64',
                                   stockfish_difficulty=10)
 
 model.train(10)
