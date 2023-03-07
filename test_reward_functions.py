@@ -29,22 +29,20 @@ class MyTestCase(unittest.TestCase):
         env.reset()
 
         # Perform a move that captures a pawn
-        env.step(checkmate.stockfish2pettingzoo(
-            chess.Move(chess.E2, chess.E4).__str__()))
-
-        print(checkmate.stockfish2pettingzoo(
-            chess.Move(chess.D7, chess.D5).__str__()))
-
-        print(checkmate.pettingzoo2stockfish(env, 2201))
-        # env.step(checkmate.stockfish2pettingzoo(
-        #     chess.Move(chess.D7, chess.D5).__str__()))
-
+        env.step(checkmate.stockfish2pettingzoo(env,
+                                                chess.Move(chess.E2,
+                                                           chess.E4).__str__()))
+        env.step(checkmate.stockfish2pettingzoo(env,
+                                                chess.Move(chess.D7,
+                                                           chess.D5).__str__()))
         print(env.render())
-        # env.step(checkmate.stockfish2pettingzoo(
-        #     chess.Move(chess.E4, chess.D5).__str__()))
-        #
-        # # Check that the reward is 1 (the value of a captured pawn)
-        # self.assertEqual(piece_capture_reward(env), 1)
+        env.step(checkmate.stockfish2pettingzoo(env,
+                                                chess.Move(chess.E4,
+                                                           chess.D5).__str__()))
+        # Check that the reward is 1 (the value of a captured pawn)
+        self.assertEqual(piece_capture_reward(env), 1)
+
+
 
 
 if __name__ == '__main__':
