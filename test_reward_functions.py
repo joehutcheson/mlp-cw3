@@ -17,8 +17,9 @@ class MyTestCase(unittest.TestCase):
         env.reset()
 
         # Perform a move that doesn't capture anything
-        mv = checkmate.stockfish2pettingzoo(
-            chess.Move(chess.E2, chess.E3).__str__())
+        mv = checkmate.stockfish2pettingzoo(env,
+                                            chess.Move(chess.E2,
+                                                       chess.E3).__str__())
         env.step(mv)
 
         # Check that the reward is 0
