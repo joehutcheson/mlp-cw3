@@ -120,7 +120,6 @@ class TestCastlingReward(unittest.TestCase):
         self.assertEqual(castling_reward(env), 1)
 
     def test_not_castling_move(self):
-
         env = ch.env(render_mode='ansi')
         env.reset()
         board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
@@ -132,6 +131,30 @@ class TestCastlingReward(unittest.TestCase):
                                                            chess.C7).__str__()))
 
         self.assertEqual(castling_reward(env), 0)
+
+
+class TestMaterialAdvantageReward(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.env = ch.env(render_mode='ansi')
+
+    def test_no_advantage(self):
+        self.env.reset()
+        self.assertEqual(material_advantage_reward(self.env), 0)
+
+    def test_white_advantage(self):
+        self.env.reset()
+        board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
+        board.set_fen('k7/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1')
+        self.assertEqual(material_advantage_reward(self.env), 15)
+
+    def test_black_advantage(self):
+        self.env.reset()
+        board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
+        board.set_fen('k7/8/8/8/8/8/pppppppp/rnbqkbnr b KQ - 0 1')
+        print(self.env.render())
+        # y u no -15 ?????????
+        self.assertEqual(material_advantage_reward(self.env), -15)
 
 
 if __name__ == '__main__':

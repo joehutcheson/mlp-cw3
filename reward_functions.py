@@ -42,7 +42,7 @@ class RewardFunction:
 
 def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
     """
-    TODO - not tested
+    **Test covered**\n
     A positive reward signal for capturing opponent's pieces.
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
@@ -78,6 +78,12 @@ def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
 
 
 def castling_reward(env: OrderEnforcingWrapper) -> int:
+    """
+    **Test covered**\n
+    Todo documentation
+    :param env:
+    :return:
+    """
     agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
     board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
     assert isinstance(board, chess.Board)
@@ -118,7 +124,8 @@ def castling_reward(env: OrderEnforcingWrapper) -> int:
 
 def material_advantage_reward(env: OrderEnforcingWrapper) -> int:
     """
-     A positive reward signal for having a material advantage over the opponent.
+    A positive (or negative) reward signal for having a material advantage over
+    the opponent.
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :return: int representing the reward at the given state
@@ -128,7 +135,6 @@ def material_advantage_reward(env: OrderEnforcingWrapper) -> int:
     agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
     board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
     assert isinstance(board, chess.Board)
-    # board.set_fen("r2qkbnr/ppp2ppp/2n5/3p1b2/2PPN2P/8/PP2PPP1/RNBQKB1R")
     for sq in SQUARES:
         piece = board.piece_at(sq)
         if piece is not None:
