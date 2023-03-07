@@ -14,6 +14,7 @@ def normalize_rewards(reward_list):
     Normalizes a list of reward signals using min-max scaling and returns a
     single aggregated reward signal.
     :param: reward_list: List of reward signals
+    :return aggregated_reward: Single normalised reward
     """
     normalized_rewards = []
     for rewards in reward_list:
@@ -68,13 +69,19 @@ def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
     board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
     assert isinstance(board, chess.Board)
 
-    last_move = board.peek()
+    last_board = board.copy() # Makes a copy
+    last_move = last_board.pop()  # Undoes the last move and assigns it
     assert isinstance(last_move, chess.Move)
+
     if board.is_capture(last_move):
         # Get the captured piece type
-        captured_piece = board.piece_at(last_move.to_square)
+        captured_piece = board.piece_at(last_move.to_square).piece_type
+        print(f"Captured piece {captured_piece}")
+        last_board = board.copy()
         return piece_values[captured_piece]
     else:
+        print(f"no piece captured")
+        last_board = board.copy()
         return 0
 
 

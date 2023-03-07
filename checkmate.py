@@ -3,6 +3,7 @@ from pettingzoo.classic.chess import chess_utils
 
 def stockfish2pettingzoo(move):
     """
+    TODO implement mirroring for promotions
     Stockfish comes in the regex format ^\d[a-z]\d[a-z]$ - string of
     length 4, 1st & 3rd chars are lowercase letters, 2nd & 4th chars
     are numbers.
@@ -42,7 +43,7 @@ def pettingzoo2stockfish(env, action_value):
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :param action_value: An integer representing the action value produced from
-                         the DQN, representing it's own move
+                         the DQN, representing its own move
     :return: a string representing the action value as a uci move
     """
 
