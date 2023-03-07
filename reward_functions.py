@@ -44,13 +44,6 @@ def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
     """
     TODO - not tested
     A positive reward signal for capturing opponent's pieces.
-    agent makes move
-    checks for reward
-        check that the previous move was legal
-        check available pieces on the board,
-            if material change  how do you check material change?
-                previous move resulted in a taking of material
-            reward
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :return: int representing the reward at the given state
@@ -72,15 +65,14 @@ def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
     last_board = board.copy() # Makes a copy
     last_move = last_board.pop()  # Undoes the last move and assigns it
     assert isinstance(last_move, chess.Move)
+    assert last_board.fen() != board.fen()
 
-    if board.is_capture(last_move):
+    if last_board.is_capture(last_move):
         # Get the captured piece type
         captured_piece = board.piece_at(last_move.to_square).piece_type
-        print(f"Captured piece {captured_piece}")
         last_board = board.copy()
         return piece_values[captured_piece]
     else:
-        print(f"no piece captured")
         last_board = board.copy()
         return 0
 
