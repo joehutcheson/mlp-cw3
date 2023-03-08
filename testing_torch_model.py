@@ -67,7 +67,7 @@ class Model:
         self.reward_function_2 = None
         if stockfish_path is not None:
             # Second agent is stockfish
-            self.stockfish = Stockfish(stockfish_path, parameters={"Threads": 8, "Minimum Thinking Time": 10})
+            self.stockfish = Stockfish(stockfish_path, parameters={"Threads": 4, "Minimum Thinking Time": 0, "Ponder": True, "Hash": 512, "Move Overhead": 0})
             self.stockfish.set_elo_rating(stockfish_difficulty)
         elif reward_function_2 is not None:
             # Second agent is our model
@@ -226,7 +226,6 @@ class Model:
     def train(self, num_episodes=500):
 
         for i_episode in range(num_episodes):
-            print(i_episode)
 
             # Initialize the environment and get its state
             self.env.reset()
@@ -285,7 +284,7 @@ class Model:
                 state = next_state
 
                 # Perform one step of the optimization (on the policy network)
-                # TODO: this really should only happen when our model is takng a turn
+                # TODO: this really should only happen when our model is taking a turn
                 self.optimize_model(agent)
 
                 # Soft update of the target network's weights
@@ -301,6 +300,9 @@ class Model:
 
                 if done:
                     self.episode_durations.append(t + 1)
+                    print(f"Game: {i_episode}, Result: {self.env.rewards}, Moves made: {t + 1}")
+                    with open("games.txt", "a") as myfile:
+                        myfile.write(str(moves_made) + '\n')
                     # self.plot_durations()
                     break
 
