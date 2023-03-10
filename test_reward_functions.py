@@ -138,21 +138,66 @@ class TestMaterialAdvantageReward(unittest.TestCase):
     def setUp(self) -> None:
         self.env = ch.env(render_mode='ansi')
 
-    def test_no_advantage(self):
+    def test_no_advantage(self) -> None:
         self.env.reset()
         self.assertEqual(material_advantage_reward(self.env), 0)
 
-    def test_white_advantage(self):
+    def test_white_advantage(self) -> None:
         self.env.reset()
         board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
         board.set_fen('k7/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1')
         self.assertEqual(15, material_advantage_reward(self.env))
 
-    def test_black_advantage(self):
+    def test_black_advantage(self) -> None:
         self.env.reset()
         board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
         board.set_fen('K7/8/8/8/8/8/pppppppp/rnbqkbnr b KQ - 0 1')
         self.assertEqual(-15, material_advantage_reward(self.env))
+
+
+def generate_random_fen_with_legal_moves_helper():
+    from random import randint
+    import random
+    board = chess.Board()
+    for x in range(0, randint(0, 100)):
+        # Make a random legal move
+        legal_moves = list(board.legal_moves)
+        if not legal_moves:
+            # If no legal moves left, start over
+            board.reset()
+            continue
+        random_move = random.choice(legal_moves)
+        board.push(random_move)
+
+    return board.fen(), len(list(board.legal_moves))
+
+
+class TestMobilityReward(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.env = ch.env(render_mode='ansi')
+
+    def test_white_starting(self) -> None:
+        self.env.reset()
+        board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
+        board.set_fen(
+            'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+        self.assertEqual(20, mobility_reward(self.env))
+
+    def test_black_starting(self) -> None:
+        self.env.reset()
+        board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
+        board.set_fen(
+            'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1')
+        self.assertEqual(20, mobility_reward(self.env))
+
+    def test_random_state(self) -> None:
+        for x in range(0, 500):
+            self.env.reset()
+            board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
+            fen_, lms = generate_random_fen_with_legal_moves_helper()
+            board.set_fen(fen_)
+            self.assertEqual(lms, mobility_reward(self.env))
 
 
 if __name__ == '__main__':
