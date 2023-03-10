@@ -146,15 +146,13 @@ class TestMaterialAdvantageReward(unittest.TestCase):
         self.env.reset()
         board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
         board.set_fen('k7/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1')
-        self.assertEqual(material_advantage_reward(self.env), 15)
+        self.assertEqual(15, material_advantage_reward(self.env))
 
     def test_black_advantage(self):
         self.env.reset()
         board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
-        board.set_fen('k7/8/8/8/8/8/pppppppp/rnbqkbnr b KQ - 0 1')
-        print(self.env.render())
-        # y u no -15 ?????????
-        self.assertEqual(material_advantage_reward(self.env), -15)
+        board.set_fen('K7/8/8/8/8/8/pppppppp/rnbqkbnr b KQ - 0 1')
+        self.assertEqual(-15, material_advantage_reward(self.env))
 
 
 if __name__ == '__main__':

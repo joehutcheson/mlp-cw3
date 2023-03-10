@@ -138,10 +138,17 @@ def material_advantage_reward(env: OrderEnforcingWrapper) -> int:
     for sq in SQUARES:
         piece = board.piece_at(sq)
         if piece is not None:
+            print(chess.WHITE)
             if piece.color == chess.WHITE:
                 white_count += 1
-            else:
+                assert white_count <= 16, f"[-] got more white pieces than " \
+                                          f"expected, c:{white_count} sq:{sq} t:{piece.piece_type}"
+            elif piece.color == chess.BLACK:
                 black_count += 1
+                assert black_count <= 16, f"[-] got more black pieces than " \
+                                          f"expected, {black_count}  sq:{sq} t:{piece.piece_type}"
+
+    x = 1
 
     return white_count - black_count if agent == 0 \
         else black_count - white_count
