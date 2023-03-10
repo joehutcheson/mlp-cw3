@@ -67,7 +67,7 @@ class Model:
         self.reward_function_2 = None
         if stockfish_path is not None:
             # Second agent is stockfish
-            self.stockfish = Stockfish(stockfish_path, depth=9, parameters={"Threads": 4, "Minimum Thinking Time": 0, "Ponder": True, "Hash": 1024, "Move Overhead": 0})
+            self.stockfish = Stockfish(stockfish_path, depth=8, parameters={"Threads": 4, "Minimum Thinking Time": 0, "Ponder": True, "Hash": 1024, "Move Overhead": 0})
             self.stockfish.set_elo_rating(stockfish_difficulty)
         elif reward_function_2 is not None:
             # Second agent is our model
