@@ -1,5 +1,10 @@
 import unittest
 
+from random import randint
+import random
+
+import chess
+
 import checkmate
 from reward_functions import *
 from pettingzoo.utils.wrappers import OrderEnforcingWrapper
@@ -115,8 +120,6 @@ class TestCastlingReward(unittest.TestCase):
         env.step(checkmate.stockfish2pettingzoo(env, chess.Move.from_uci(
             'e1g1').__str__()))
 
-        print(env.render())
-
         self.assertEqual(castling_reward(env), 1)
 
     def test_not_castling_move(self):
@@ -156,8 +159,6 @@ class TestMaterialAdvantageReward(unittest.TestCase):
 
 
 def generate_random_fen_with_legal_moves_helper():
-    from random import randint
-    import random
     board = chess.Board()
     for x in range(0, randint(0, 100)):
         # Make a random legal move
@@ -192,7 +193,7 @@ class TestMobilityReward(unittest.TestCase):
         self.assertEqual(20, mobility_reward(self.env))
 
     def test_random_state(self) -> None:
-        for x in range(0, 500):
+        for x in range(0, 1000):
             self.env.reset()
             board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
             fen_, lms = generate_random_fen_with_legal_moves_helper()
@@ -200,5 +201,49 @@ class TestMobilityReward(unittest.TestCase):
             self.assertEqual(lms, mobility_reward(self.env))
 
 
+def generate_random_fen_with_centre_control():
+    board = chess.Board()
+    for x in range(0, randint(0, 100)):
+        # Make a random legal move
+        legal_moves = list(board.legal_moves)
+        if not legal_moves:
+            # If no legal moves left, start over
+            board.reset()
+            continue
+        random_move = random.choice(legal_moves)
+        board.push(random_move)
+
+    # Define the central squares of the board
+    center_squares = [chess.E4, chess.D4, chess.E5, chess.D5]
+
+    # Get the number of pieces each player has controlling the central squares
+    white_control = sum([1 for sq in center_squares if
+                         board.piece_at(sq) and board.piece_at(
+                             sq).color == chess.WHITE])
+    black_control = sum([1 for sq in center_squares if
+                         board.piece_at(sq) and board.piece_at(
+                             sq).color == chess.BLACK])
+
+    score_to_return = white_control - black_control if \
+        board.turn == chess.WHITE else black_control - white_control
+
+    return board.fen(), score_to_return
+
+
+class TestControlOfTheCentreReward(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.env = ch.env(render_mode='ansi')
+
+    def test_random_states(self) -> None:
+        # TODO fix this bcs it doesn't work and it's something to do with who's turn it is
+        for _ in range(0, 5):
+            self.env.reset()
+            board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
+            fen_, score = generate_random_fen_with_centre_control()
+            board.set_fen(fen_)
+            self.assertEqual(score, control_of_centre_reward(self.env))
+
+
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=1)

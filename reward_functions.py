@@ -62,7 +62,7 @@ def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
     board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
     assert isinstance(board, chess.Board)
 
-    last_board = board.copy() # Makes a copy
+    last_board = board.copy()  # Makes a copy
     last_move = last_board.pop()  # Undoes the last move and assigns it
     assert isinstance(last_move, chess.Move)
     assert last_board.fen() != board.fen()
@@ -169,7 +169,6 @@ def mobility_reward(env: OrderEnforcingWrapper) -> int:
 
 def control_of_centre_reward(env: OrderEnforcingWrapper) -> float:
     """
-    # TODO - test test test this function
     A positive reward signal for controlling the central squares of the board.
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
@@ -192,7 +191,8 @@ def control_of_centre_reward(env: OrderEnforcingWrapper) -> float:
 
     # Calculate the central control valuation as the difference between the
     # number of pieces controlling the central squares for each player
-    central_control_valuation = white_control - black_control
+    central_control_valuation = white_control - black_control if agent == 0 \
+        else black_control - white_control
 
     return central_control_valuation
 
