@@ -93,16 +93,15 @@ class Model:
         # Get number of actions from pettingzoo action space
         n_actions = env.action_space('player_0').n
         # Get the number of state observations
-        n_observations = math.prod(env.observe('player_0')['observation'].shape)
-
+        # n_observations = math.prod(env.observe('player_0')['observation'].shape)
         # Model setup. Model is stores as dictionaries which are accessed by agent
         self.memory = dict()
         self.policy_net = dict()
         self.target_net = dict()
         self.optimizer = dict()
         for agent in self.env.agents:
-            self.policy_net[agent] = DQN(n_observations, n_actions).to(self.device)
-            self.target_net[agent] = DQN(n_observations, n_actions).to(self.device)
+            self.policy_net[agent] = Network().to(self.device)
+            self.target_net[agent] = Network().to(self.device)
             self.target_net[agent].load_state_dict(self.policy_net[agent].state_dict())
             self.optimizer[agent] = optim.AdamW(self.policy_net[agent].parameters(), lr=self.LR, amsgrad=True)
             self.memory[agent] = ReplayMemory(10000)
@@ -236,7 +235,7 @@ class Model:
             moves_made = []
 
             agent = self.env.agent_selection
-            state = self.env.observe(agent)['observation'].flatten()
+            state = self.env.observe(agent)['observation']
             state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
             for t in count():
 
@@ -252,7 +251,7 @@ class Model:
                 # Update the pettingzoo environment
                 self.env.step(action.item())
 
-                observation = self.env.observe(agent)['observation'].flatten()
+                observation = self.env.observe(agent)['observation']
 
                 # Calculate the reward
                 if agent == self.env.agents[0]:
@@ -340,6 +339,123 @@ class DQN(nn.Module):
         x = F.relu(self.layer3(x))
         x = F.relu(self.layer4(x))
         return self.layer5(x)
+
+
+# Taken from https://github.com/yukw777/leela-zero-pytorch/blob/master/leela_zero_pytorch/network.py
+class ConvBlock(nn.Module):
+    """
+    A convolutional block with a convolution layer, batchnorm (with beta) and
+    an optional relu
+    Note on the bias for the convolutional layer:
+    Leela Zero actually uses the bias for the convolutional layer to represent
+    the learnable parameters (gamma and beta) of the following batch norm layer.
+    This was done so that the format of the weights file, which only has one line
+    for the layer weights and another for the bias, didn't have to change when
+    batch norm layers were added.
+    Currently, Leela Zero only uses the beta term of batch norm, and sets gamma to 1.
+    Then, how do you actually use the convolutional bias to produce the same results
+    as applying the learnable parameters in batch norm? Let's first take
+    a look at the equation for batch norm:
+    y = gamma * (x - mean)/sqrt(var - eps) + beta
+    Since Leela Zero sets gamma to 1, the equation becomes:
+    y = (x - mean)/sqrt(var - eps) + beta
+    Now, let `x_conv` be the output of a convolutional layer without the bias.
+    Then, we want to add some bias to `x_conv`, so that when you run it through
+    batch norm without `beta`, the result is the same as running `x_conv`
+    through the batch norm equation with only beta mentioned above. In an equation form:
+    (x_conv + bias - mean)/sqrt(var - eps) = (x_conv - mean)/sqrt(var - eps) + beta
+    x_conv + bias - mean = x_conv - mean + beta * sqrt(var - eps)
+    bias = beta * sqrt(var - eps)
+    So if we set the convolutional bias to `beta * sqrt(var - eps)`, we get the desired
+    output, and this is what LeelaZero does.
+    In Tensorflow, you can tell the batch norm layer to ignore just the gamma term
+    by calling `tf.layers.batch_normalization(scale=False)` and be done with it.
+    Unfortunately, in PyTorch you can't set batch normalization layers to ignore only
+    `gamma`; you can only ignore both `gamma` and `beta` by setting the affine
+    parameter to False: `BatchNorm2d(out_channels, affine=False)`. So, ConvBlock sets
+    batch normalization to ignore both, then simply adds a tensor after, which
+    represents `beta`.
+    """
+
+    def __init__(
+        self, in_channels: int, out_channels: int, kernel_size: int, relu: bool = True
+    ):
+        super().__init__()
+        # we only support the kernel sizes of 1 and 3
+        assert kernel_size in (1, 3)
+
+        self.conv = nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size,
+            padding=1 if kernel_size == 3 else 0,
+            bias=False,
+        )
+        self.bn = nn.BatchNorm2d(out_channels, affine=False)
+        self.beta = nn.Parameter(torch.zeros(out_channels))  # type: ignore
+        self.relu = relu
+
+        # initializations
+        nn.init.kaiming_normal_(self.conv.weight, mode="fan_out", nonlinearity="relu")
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
+        x += self.beta.view(1, self.bn.num_features, 1, 1).expand_as(x)
+        return F.relu(x, inplace=True) if self.relu else x
+
+
+# Taken from https://github.com/yukw777/leela-zero-pytorch/blob/master/leela_zero_pytorch/network.py
+class ResBlock(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int):
+        super().__init__()
+        self.conv1 = ConvBlock(in_channels, out_channels, 3)
+        self.conv2 = ConvBlock(out_channels, out_channels, 3, relu=False)
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.conv2(out)
+
+        out += identity
+        return F.relu(out, inplace=True)
+
+
+# Taken from https://github.com/yukw777/leela-zero-pytorch/blob/master/leela_zero_pytorch/network.py
+class Network(nn.Module):
+    def __init__(
+        self,
+        in_channels: int = 8,
+        board_size: int = 19,
+        residual_channels: int = 128,
+        residual_layers: int = 6,
+    ):
+        super().__init__()
+        self.conv_input = ConvBlock(in_channels, residual_channels, 3)
+        self.residual_tower = nn.Sequential(
+            *[
+                ResBlock(residual_channels, residual_channels)
+                for _ in range(residual_layers)
+            ]
+        )
+        self.policy_conv = ConvBlock(residual_channels, 2, 1)
+        self.policy_fc = nn.Linear(
+            1776, 4672
+        )
+
+    def forward(self, planes):
+        # first conv layer
+        x = self.conv_input(planes)
+
+        # residual tower
+        x = self.residual_tower(x)
+
+        # policy head
+        pol = self.policy_conv(x)
+        pol = self.policy_fc(torch.flatten(pol, start_dim=1))
+
+        return pol
 
 
 Transition = namedtuple('Transition',
