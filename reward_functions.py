@@ -5,8 +5,31 @@ import chess
 import chess as pychess
 from pettingzoo.utils import OrderEnforcingWrapper
 from pettingzoo.classic.chess import chess_utils
+import numpy as np
 
 
+# ---- Normalisation Functions ----
+def normalize_rewards(reward_list):
+    """
+    Normalizes a list of reward signals using min-max scaling and returns a
+    single aggregated reward signal.
+    :param: reward_list: List of reward signals
+    :return aggregated_reward: Single normalised reward
+    """
+    normalized_rewards = []
+    for rewards in reward_list:
+        min_reward = np.min(rewards)
+        max_reward = np.max(rewards)
+        if max_reward == min_reward:
+            normalized_rewards.append(np.array(rewards))
+        else:
+            normalized_rewards.append(
+                (np.array(rewards) - min_reward) / (max_reward - min_reward))
+    aggregated_reward = np.mean(normalized_rewards, axis=0)
+    return aggregated_reward
+
+
+# ---- Reward Functions ----
 class RewardFunction:
 
     def __init__(self, env_, agent_):
@@ -19,15 +42,8 @@ class RewardFunction:
 
 def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
     """
-    TODO - not tested
+    **Test covered**\n
     A positive reward signal for capturing opponent's pieces.
-    agent makes move
-    checks for reward
-        check that the previous move was legal
-        check available pieces on the board,
-            if material change  how do you check material change?
-                previous move resulted in a taking of material
-            reward
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :return: int representing the reward at the given state
@@ -45,19 +61,71 @@ def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
     agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
     board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
     assert isinstance(board, chess.Board)
-    last_move = board.peek()
+
+    last_board = board.copy()  # Makes a copy
+    last_move = last_board.pop()  # Undoes the last move and assigns it
     assert isinstance(last_move, chess.Move)
-    if board.is_capture(last_move):
+    assert last_board.fen() != board.fen()
+
+    if last_board.is_capture(last_move):
         # Get the captured piece type
-        captured_piece = board.piece_at(last_move.to_square)
+        captured_piece = last_board.piece_at(last_move.to_square).piece_type
+        last_board = board.copy()
         return piece_values[captured_piece]
     else:
+        last_board = board.copy()
         return 0
+
+
+def castling_reward(env: OrderEnforcingWrapper) -> int:
+    """
+    **Test covered**\n
+    Todo documentation
+    :param env:
+    :return:
+    """
+    agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
+    board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+    assert isinstance(board, chess.Board)
+
+    if board.move_stack:
+        # Get the last move in the move stack
+        last_board = board.copy()  # Makes a copy
+        last_move = last_board.pop()  # Undoes the last move and assigns it
+        assert isinstance(last_move, chess.Move)
+        assert last_board.fen() != board.fen()
+
+        # Check if the last move was a castling move
+        if last_board.is_castling(last_move):
+            # Get the color of the player who made the move
+            player_color = last_board.turn
+
+            # Determine which side the player castled on
+            if last_move.to_square == chess.G1:
+                # Kingside castle for white
+                if player_color == chess.WHITE:
+                    return 1
+            elif last_move.to_square == chess.C1:
+                # Queenside castle for white
+                if player_color == chess.WHITE:
+                    return 1
+            elif last_move.to_square == chess.G8:
+                # Kingside castle for black
+                if player_color == chess.BLACK:
+                    return 1
+            elif last_move.to_square == chess.C8:
+                # Queenside castle for black
+                if player_color == chess.BLACK:
+                    return 1
+
+    # Return zero if the last move was not a castling move
+    return 0
 
 
 def material_advantage_reward(env: OrderEnforcingWrapper) -> int:
     """
-     A positive reward signal for having a material advantage over the opponent.
+    A positive (or negative) reward signal for having a material advantage over
+    the opponent.
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :return: int representing the reward at the given state
@@ -67,14 +135,19 @@ def material_advantage_reward(env: OrderEnforcingWrapper) -> int:
     agent = env.agents.index(env.agent_selection)  # Gets the agent (0 | 1)
     board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
     assert isinstance(board, chess.Board)
-    # board.set_fen("r2qkbnr/ppp2ppp/2n5/3p1b2/2PPN2P/8/PP2PPP1/RNBQKB1R")
     for sq in SQUARES:
         piece = board.piece_at(sq)
         if piece is not None:
             if piece.color == chess.WHITE:
                 white_count += 1
-            else:
+                assert white_count <= 16, f"[-] got more white pieces than " \
+                                          f"expected, c:{white_count} sq:{sq} t:{piece.piece_type}"
+            elif piece.color == chess.BLACK:
                 black_count += 1
+                assert black_count <= 16, f"[-] got more black pieces than " \
+                                          f"expected, {black_count}  sq:{sq} t:{piece.piece_type}"
+
+    x = 1
 
     return white_count - black_count if agent == 0 \
         else black_count - white_count
@@ -96,7 +169,6 @@ def mobility_reward(env: OrderEnforcingWrapper) -> int:
 
 def control_of_centre_reward(env: OrderEnforcingWrapper) -> float:
     """
-    # TODO - test test test this function
     A positive reward signal for controlling the central squares of the board.
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
@@ -119,7 +191,8 @@ def control_of_centre_reward(env: OrderEnforcingWrapper) -> float:
 
     # Calculate the central control valuation as the difference between the
     # number of pieces controlling the central squares for each player
-    central_control_valuation = white_control - black_control
+    central_control_valuation = white_control - black_control if agent == 0 \
+        else black_control - white_control
 
     return central_control_valuation
 
@@ -166,6 +239,7 @@ def pawn_structure_reward(env: OrderEnforcingWrapper) -> int:
     """
     A positive reward signal for having a strong pawn structure.
     Heavy lifting done by evaluate_pawns() helper function.
+    TODO - not tested
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :return: int representing the reward at the given state
@@ -247,4 +321,3 @@ def pawn_structure_reward(env: OrderEnforcingWrapper) -> int:
 
     # Return the difference between the pawn structure scores for each player
     return white_pawn_score - black_pawn_score
-

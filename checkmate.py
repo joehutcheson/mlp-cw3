@@ -6,6 +6,7 @@ from pettingzoo.utils.wrappers import OrderEnforcingWrapper
 
 def stockfish2pettingzoo(env: OrderEnforcingWrapper, move: str) -> int:
     """
+    TODO implement mirroring for promotions
     Stockfish comes in the regex format ^\d[a-z]\d[a-z]$ - string of
     length 4, 1st & 3rd chars are lowercase letters, 2nd & 4th chars
     are numbers.
@@ -60,7 +61,7 @@ def pettingzoo2stockfish(env: OrderEnforcingWrapper, action_value: int) -> str:
     :param env: OrderEnforcingWrapper instance representing the chess
                 environment
     :param action_value: An integer representing the action value produced from
-                         the DQN, representing it's own move
+                         the DQN, representing its own move
     :return: a string representing the action value as a uci move
     """
 
