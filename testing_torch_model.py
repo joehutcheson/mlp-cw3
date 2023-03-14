@@ -283,8 +283,8 @@ class Model:
                 state = next_state
 
                 # Perform one step of the optimization (on the policy network)
-                # TODO: this really should only happen when our model is taking a turn
-                self.optimize_model(agent)
+                if agent == 'player_0' or self.reward_function_2 is not None:
+                    self.optimize_model(agent)
 
                 # Soft update of the target network's weights
                 # θ′ ← τ θ + (1 −τ )θ′
