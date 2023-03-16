@@ -300,8 +300,8 @@ class Model:
                 if done:
                     self.episode_durations.append(t + 1)
                     print(f"Game: {i_episode}, Result: {self.env.rewards}, Moves made: {t + 1}")
-                    with open("games.txt", "a") as myfile:
-                        myfile.write(str(moves_made) + '\n')
+                    # with open("games.txt", "a") as myfile:
+                    #     myfile.write(str(moves_made) + '\n')
                     # self.plot_durations()
                     break
 
@@ -320,6 +320,92 @@ class Model:
 
         self.policy_net[agent].load_state_dict(torch.load(path + name + '_policy_net.pt'))
         self.policy_net[agent].eval()
+
+    def test(self, num_episodes=25):
+
+        results = {'player_0': 0, 'draw': 0, 'player_1': 0}
+
+        for i_episode in range(num_episodes):
+
+            # Initialize the environment and get its state
+            self.env.reset()
+            if self.stockfish:
+                self.stockfish.set_position([])
+
+            # Record the moves made in a game
+            moves_made = []
+
+            agent = self.env.agent_selection
+            state = self.env.observe(agent)['observation']
+            state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+            for t in count():
+
+                # Get the next action
+                action = self.select_action_test(state, agent)
+
+                # Update the stockfish board if in use
+                if self.stockfish:
+                    move = pettingzoo2stockfish(self.env, action.item())
+                    moves_made.append(move)
+                    self.stockfish.make_moves_from_current_position([move])
+
+                # Update the pettingzoo environment
+                self.env.step(action.item())
+
+                observation = self.env.observe(agent)['observation']
+
+                # Check for end states
+                terminated = self.env.terminations[agent]
+                truncated = self.env.truncations[agent]
+                done = terminated or truncated
+
+                if terminated:
+                    next_state = None
+                else:
+                    next_state = torch.tensor(observation, dtype=torch.float32,
+                                              device=self.device).unsqueeze(0)
+
+
+                # Move to the next state
+                state = next_state
+
+                agent = self.env.agent_selection
+
+                if done:
+                    if self.env.rewards['player_0'] == 1:
+                        results['player_0'] += 1
+                    elif self.env.rewards['player_1'] == 1:
+                        results['player_1'] += 1
+                    else:
+                        results['draw'] += 1
+                    self.episode_durations.append(t + 1)
+                    print(f"Game: {i_episode}, Result: {self.env.rewards}, Moves made: {t + 1}")
+                    # with open("games.txt", "a") as myfile:
+                    #     myfile.write(str(moves_made) + '\n')
+                    # self.plot_durations()
+                    break
+
+        print(results)
+        print('Complete')
+
+    def select_action_test(self, state, agent):
+        assert self.stockfish or self.reward_function_2 is not None
+        if self.stockfish and agent == self.env.agents[1]:
+            # Stockfish decides move
+            best_action = self.stockfish.get_best_move()
+            return torch.tensor([[stockfish2pettingzoo(self.env, best_action)]], device=self.device, dtype=torch.long)
+        else:
+
+            mask = self.env.observe(agent)['action_mask']
+            with torch.no_grad():
+                # t.max(1) will return the largest column value of each row.
+                # second column on max result is index of where max element was
+                # found, so we pick action with the larger expected reward.
+                policy = self.policy_net[agent](state) * torch.from_numpy(mask).to(self.device)
+                if torch.max(policy) <= 0:
+                    return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
+                                        dtype=torch.long)
+                return policy.max(1)[1].view(1, 1)
 
 
 class DQN(nn.Module):
