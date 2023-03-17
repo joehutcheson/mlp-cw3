@@ -29,15 +29,16 @@ def normalize_rewards(reward_list):
     return aggregated_reward
 
 
-# ---- Reward Functions ----
-class RewardFunction:
+def outcome_reward(env: OrderEnforcingWrapper) -> int:
+    """
+    :param env:
+    :return:
+    """
+    agent = env.agent_selection  # Gets the agent (0 | 1)
+    board = getattr(env.unwrapped.unwrapped.unwrapped, 'board')
+    assert isinstance(board, chess.Board)
+    return env.rewards[agent] * 1000
 
-    def __init__(self, env_, agent_):
-        self.env = env_
-        self.agent = agent_
-
-    def get_reward(self):
-        raise NotImplementedError()
 
 
 def piece_capture_reward(env: OrderEnforcingWrapper) -> int:

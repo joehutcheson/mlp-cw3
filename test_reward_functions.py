@@ -11,6 +11,45 @@ from pettingzoo.utils.wrappers import OrderEnforcingWrapper
 from pettingzoo.classic import chess_v5 as ch
 
 
+class TestOutcomeReward(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.env = ch.env(render_mode='ansi')
+
+    def always_true_test(self):
+        self.assertEqual(True, True)
+
+    # def test_win_for_white(self):
+    #
+    #     self.env.reset()
+    #     board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
+    #     board.set_fen('2k4R/7R/8/8/8/8/8/5K2 w - - 0 1')
+    #     self.assertEqual(outcome_reward(self.env), 1)
+    #
+    # def test_win_for_black(self):
+    #     """
+    #     White to move (agent 0)
+    #     Black has checkmated
+    #     :return:
+    #     """
+    #     self.env.reset()
+    #     board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
+    #     board.set_fen('2K4r/7r/8/8/8/8/8/5k2 b - - 0 1')
+    #     self.assertEqual(outcome_reward(self.env), -1)
+    #
+    def test(self):
+        self.env.reset()
+        board = getattr(self.env.unwrapped.unwrapped.unwrapped, 'board')
+        board.set_fen('2K5/7r/6r1/8/8/8/8/5k2 b - - 0 1')
+        print(board.legal_moves)
+        # self.env.step(3661)
+        print(self.env.render())
+        print(board.turn)
+        r = outcome_reward(self.env)
+        print(f"reward: {r}")
+
+
+
 class TestCapturePieceReward(unittest.TestCase):
 
     def always_true_test(self):
