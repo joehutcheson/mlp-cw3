@@ -12,5 +12,5 @@ model = testing_torch_model.Model(env, reward_function=piece_capture_reward,
                                   stockfish_path=d,
                                   stockfish_difficulty=500)
 
-model.train(1000)
+model.train(2000)
 model.save_model('player_0', 'models/', 'piece_capture')
