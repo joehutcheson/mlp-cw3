@@ -66,16 +66,17 @@ def piece_capture_reward(env: OrderEnforcingWrapper) -> int:
     last_board = board.copy()  # Makes a copy
     last_move = last_board.pop()  # Undoes the last move and assigns it
     assert isinstance(last_move, chess.Move)
-    assert last_board.fen() != board.fen()
+    # assert last_board.fen() != board.fen()
 
     if last_board.is_capture(last_move):
         # Get the captured piece type
-        captured_piece = last_board.piece_at(last_move.to_square).piece_type
-        last_board = board.copy()
-        return piece_values[captured_piece]
-    else:
-        last_board = board.copy()
-        return 0
+        captured_piece = last_board.piece_at(last_move.to_square)
+        if captured_piece is not None:
+            return piece_values[captured_piece.piece_type]
+        else:
+            # Move is en passant
+            return piece_values[chess.PAWN]
+    return 0
 
 
 def castling_reward(env: OrderEnforcingWrapper) -> int:
