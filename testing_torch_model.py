@@ -5,6 +5,7 @@ https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 
 import math
 import random
+import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from collections import namedtuple, deque
@@ -20,6 +21,7 @@ from pettingzoo.utils.wrappers.order_enforcing import OrderEnforcingWrapper
 from stockfish import Stockfish
 
 from checkmate import pettingzoo2stockfish, stockfish2pettingzoo
+from reward_functions import normalize_rewards
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
@@ -255,9 +257,11 @@ class Model:
 
                 # Calculate the reward
                 if agent == self.env.agents[0]:
-                    reward = self.reward_function(self.env)
+                    reward = self.reward_function(self.env) * 1000
+                    reward = np.float32(normalize_rewards([reward, self.env.rewards['player_0']]))
                 elif self.reward_function_2 is not None and agent == self.env.agents[1]:
-                    reward = self.reward_function_2(self.env)
+                    reward = self.reward_function_2(self.env) * 1000
+                    reward = np.float32(normalize_rewards([reward, self.env.rewards['player_1']]))
                 elif self.stockfish is not None and agent == self.env.agents[1]:
                     reward = None
                 else:
