@@ -1,3 +1,3 @@
 #!/bin/sh
 
-python materal_adv.py
+python material_adv.py
