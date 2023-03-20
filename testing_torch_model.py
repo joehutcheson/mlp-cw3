@@ -325,7 +325,7 @@ class Model:
         self.policy_net[agent].load_state_dict(torch.load(path + name + '_policy_net.pt'))
         self.policy_net[agent].eval()
 
-    def test(self, num_episodes=25):
+    def test(self, num_episodes=50):
 
         results = {'player_0': 0, 'draw': 0, 'player_1': 0}
 
@@ -383,7 +383,7 @@ class Model:
                     else:
                         results['draw'] += 1
                     self.episode_durations.append(t + 1)
-                    print(f"Game: {i_episode}, Result: {self.env.rewards}, Moves made: {t + 1}")
+                    # print(f"Game: {i_episode}, Result: {self.env.rewards}, Moves made: {t + 1}")
                     # with open("games.txt", "a") as myfile:
                     #     myfile.write(str(moves_made) + '\n')
                     # self.plot_durations()
