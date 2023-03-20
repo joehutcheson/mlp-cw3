@@ -12,14 +12,18 @@ models = [
     },
     {
         'name': 'ctrl_of_centre',
-        'func': material_advantage_reward
+        'func': control_of_centre_reward
     },
     {
         'name': 'material_advantage',
+        'func': material_advantage_reward
+    },
+    {
+        'name': 'mobility',
         'func': mobility_reward
     },
     {
-        'name': piece_capture_reward,
+        'name': 'piece_capture',
         'func': piece_capture_reward
     }
 ]
