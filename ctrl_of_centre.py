@@ -12,5 +12,5 @@ model = testing_torch_model.Model(env, reward_function=control_of_centre_reward,
                                   stockfish_path=d,
                                   stockfish_difficulty=500)
 
-model.train(2000)
+model.train()
 model.save_model('player_0', 'models/', 'ctrl_of_centre')
