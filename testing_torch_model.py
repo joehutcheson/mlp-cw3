@@ -518,8 +518,8 @@ class Network(nn.Module):
         self,
         in_channels: int = 8,
         board_size: int = 19,
-        residual_channels: int = 32,
-        residual_layers: int = 8,
+        residual_channels: int = 64,
+        residual_layers: int = 6,
     ):
         super().__init__()
         self.conv_input = ConvBlock(in_channels, residual_channels, 3)
