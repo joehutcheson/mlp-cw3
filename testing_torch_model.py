@@ -351,10 +351,11 @@ class Model:
                 # Get the next action
                 action = self.select_action_test(state, agent)
 
+                move = pettingzoo2stockfish(self.env, action.item())
+                moves_made.append(move)
+
                 # Update the stockfish board if in use
                 if self.stockfish:
-                    move = pettingzoo2stockfish(self.env, action.item())
-                    moves_made.append(move)
                     self.stockfish.make_moves_from_current_position([move])
 
                 # Update the pettingzoo environment
