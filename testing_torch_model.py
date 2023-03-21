@@ -522,7 +522,9 @@ class Network(nn.Module):
         self,
         in_channels: int = 8,
         board_size: int = 19,
-        residual_channels: int = 64,
+        # residual_channels: int = 64,
+        # residual_layers: int = 6,
+        residual_channels: int = 128,
         residual_layers: int = 6,
     ):
         super().__init__()
