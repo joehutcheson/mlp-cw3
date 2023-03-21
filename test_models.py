@@ -38,6 +38,6 @@ for m0 in models:
             model.load_model('player_0', 'models/', m0['name'])
             model.load_model('player_1', 'models/', m1['name'])
             print(f"player_0: {m0['name']} vs player_1: {m1['name']}")
-            model.test()
+            model.test(5)
 
 print('Complete')
