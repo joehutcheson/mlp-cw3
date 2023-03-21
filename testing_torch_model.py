@@ -388,6 +388,7 @@ class Model:
                         results['draw'] += 1
                     self.episode_durations.append(t + 1)
                     # print(f"Game: {i_episode}, Result: {self.env.rewards}, Moves made: {t + 1}")
+                    print(moves_made)
                     # with open("games.txt", "a") as myfile:
                     #     myfile.write(str(moves_made) + '\n')
                     # self.plot_durations()
