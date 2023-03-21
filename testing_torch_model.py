@@ -258,6 +258,10 @@ class Model:
                 # Calculate the reward
                 if agent == self.env.agents[0]:
                     reward = self.reward_function(self.env) * 1000
+
+                    # FOR OUTCOME REWARD ONLY!!!
+                    reward = self.env.rewards['player_0']
+
                     reward = np.float32(normalize_rewards([reward, self.env.rewards['player_0']]))
                 elif self.reward_function_2 is not None and agent == self.env.agents[1]:
                     reward = self.reward_function_2(self.env) * 1000
