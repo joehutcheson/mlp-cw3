@@ -12,5 +12,4 @@ model = testing_torch_model.Model(env, reward_function=material_advantage_reward
                                   stockfish_path=d,
                                   stockfish_difficulty=500)
 
-model.train()
-model.save_model('player_0', 'models/', 'material_advantage')
+model.load_model('player_0', 'models/', 'material_advantage')
