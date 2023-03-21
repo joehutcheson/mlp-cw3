@@ -260,7 +260,7 @@ class Model:
                     reward = self.reward_function(self.env) * 1000
 
                     # FOR OUTCOME REWARD ONLY!!!
-                    reward = self.env.rewards['player_0']
+                    # reward = self.env.rewards['player_0']
 
                     reward = np.float32(normalize_rewards([reward, self.env.rewards['player_0']]))
                 elif self.reward_function_2 is not None and agent == self.env.agents[1]:
@@ -333,6 +333,9 @@ class Model:
 
         results = {'player_0': 0, 'draw': 0, 'player_1': 0}
 
+        self.random_moves = 5
+        self.random_moves_probability = 0.2
+
         for i_episode in range(num_episodes):
 
             # Initialize the environment and get its state
@@ -347,6 +350,8 @@ class Model:
             state = self.env.observe(agent)['observation']
             state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
             for t in count():
+
+                self.moves = t
 
                 # Get the next action
                 action = self.select_action_test(state, agent)
@@ -407,6 +412,13 @@ class Model:
         else:
 
             mask = self.env.observe(agent)['action_mask']
+
+            r = random.random()
+            if r < self.random_moves_probability and self.moves <= self.random_moves:
+                # adds randomness into training so that different games are played
+                return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
+                                    dtype=torch.long)
+
             with torch.no_grad():
                 # t.max(1) will return the largest column value of each row.
                 # second column on max result is index of where max element was

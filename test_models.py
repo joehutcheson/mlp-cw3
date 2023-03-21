@@ -25,6 +25,10 @@ models = [
     {
         'name': 'piece_capture',
         'func': piece_capture_reward
+    },
+    {
+        'name': 'outcome',
+        'func': outcome_reward
     }
 ]
 
