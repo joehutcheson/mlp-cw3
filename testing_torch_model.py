@@ -69,7 +69,7 @@ class Model:
         self.reward_function_2 = None
         if stockfish_path is not None:
             # Second agent is stockfish
-            self.stockfish = Stockfish(stockfish_path, depth=8, parameters={"Threads": 4, "Minimum Thinking Time": 0, "Ponder": True, "Hash": 1024, "Move Overhead": 0})
+            self.stockfish = Stockfish(stockfish_path, depth=4, parameters={"Threads": 4, "Minimum Thinking Time": 0, "Ponder": True, "Hash": 1024, "Move Overhead": 0})
             self.stockfish.set_elo_rating(stockfish_difficulty)
         elif reward_function_2 is not None:
             # Second agent is our model
@@ -518,8 +518,8 @@ class Network(nn.Module):
         self,
         in_channels: int = 8,
         board_size: int = 19,
-        residual_channels: int = 128,
-        residual_layers: int = 6,
+        residual_channels: int = 32,
+        residual_layers: int = 8,
     ):
         super().__init__()
         self.conv_input = ConvBlock(in_channels, residual_channels, 3)
