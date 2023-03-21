@@ -224,7 +224,7 @@ class Model:
         torch.nn.utils.clip_grad_value_(self.policy_net[agent].parameters(), 100)
         self.optimizer[agent].step()
 
-    def train(self, num_episodes=10000):
+    def train(self, num_episodes=2000):
 
         for i_episode in range(num_episodes):
 
