@@ -394,7 +394,7 @@ class Model:
                         results['draw'] += 1
                     self.episode_durations.append(t + 1)
                     # print(f"Game: {i_episode}, Result: {self.env.rewards}, Moves made: {t + 1}")
-                    print(moves_made)
+                    # print(moves_made)
                     # with open("games.txt", "a") as myfile:
                     #     myfile.write(str(moves_made) + '\n')
                     # self.plot_durations()
@@ -413,11 +413,11 @@ class Model:
 
             mask = self.env.observe(agent)['action_mask']
 
-            # r = random.random()
-            # if r < self.random_moves_probability and self.moves <= self.random_moves:
-            #     # adds randomness into training so that different games are played
-            #     return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
-            #                         dtype=torch.long)
+            r = random.random()
+            if r < self.random_moves_probability and self.moves <= self.random_moves:
+                # adds randomness into training so that different games are played
+                return torch.tensor([[self.env.action_space(agent).sample(mask)]], device=self.device,
+                                    dtype=torch.long)
 
             with torch.no_grad():
                 # t.max(1) will return the largest column value of each row.
